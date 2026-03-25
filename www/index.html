@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no"/>
+<meta name="description" content="NexCall — Secure end-to-end encrypted 1-to-1 video calling powered by WebRTC."/>
+<title>NexCall — Secure Video</title>
+<meta name="theme-color" content="#07070a"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:        #07070a;
+  --surface:   rgba(17,17,22,.65);
+  --panel:     rgba(22,22,30,.7);
+  --border:    rgba(255,255,255,.06);
+  --border-hi: rgba(255,255,255,.12);
+  --accent:    #6ee7f7;
+  --accent-dim:rgba(110,231,247,.15);
+  --accent2:   #a78bfa;
+  --accent2-dim:rgba(167,139,250,.15);
+  --danger:    #f87171;
+  --success:   #34d399;
+  --text:      #eaeaef;
+  --muted:     #6b6b7a;
+  --radius:    16px;
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Inter', system-ui, sans-serif;
+}
+
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--sans)}
+
+/* ─── Animated gradient background ────────────────────── */
+.gradient-bg{
+  position:fixed;inset:0;z-index:0;overflow:hidden;
+}
+.gradient-bg::before,.gradient-bg::after{
+  content:'';position:absolute;border-radius:50%;
+  filter:blur(120px);opacity:.4;
+  animation:float 14s ease-in-out infinite alternate;
+}
+.gradient-bg::before{
+  width:600px;height:600px;top:-10%;left:-5%;
+  background:radial-gradient(circle,#6ee7f7 0%,transparent 70%);
+}
+.gradient-bg::after{
+  width:500px;height:500px;bottom:-10%;right:-5%;
+  background:radial-gradient(circle,#a78bfa 0%,transparent 70%);
+  animation-delay:-7s;animation-direction:alternate-reverse;
+}
+@keyframes float{
+  0%{transform:translate(0,0) scale(1)}
+  50%{transform:translate(60px,40px) scale(1.1)}
+  100%{transform:translate(-30px,70px) scale(0.95)}
+}
+
+/* Noise texture overlay */
+.noise-overlay{
+  position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.035;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat:repeat;background-size:128px;
+}
+
+/* ─── Layout ─────────────────────────────────────────── */
+#app{display:flex;height:100dvh;flex-direction:column;position:relative;z-index:2}
+
+/* ─── Lobby ──────────────────────────────────────────── */
+#lobby{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  padding:1.5rem;
+  animation:lobby-enter .7s cubic-bezier(.23,1,.32,1) both;
+}
+@keyframes lobby-enter{
+  from{opacity:0;transform:translateY(24px) scale(.97)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+.lobby-card{
+  width:100%;max-width:440px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:24px;padding:2.5rem;
+  backdrop-filter:blur(40px) saturate(1.6);
+  -webkit-backdrop-filter:blur(40px) saturate(1.6);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.04),
+    0 8px 40px rgba(0,0,0,.5),
+    0 0 80px rgba(110,231,247,.04);
+  position:relative;
+  overflow:hidden;
+}
+.lobby-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(110,231,247,.3),rgba(167,139,250,.3),transparent);
+}
+.logo{
+  font-size:1.75rem;font-weight:700;letter-spacing:-.04em;
+  background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;color:transparent;
+  margin-bottom:.25rem;
+}
+.tagline{
+  font-size:.72rem;color:var(--muted);font-family:var(--mono);
+  margin-bottom:2rem;letter-spacing:.06em;
+  display:flex;align-items:center;gap:.5rem;
+}
+.tagline::before{
+  content:'';display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:var(--success);box-shadow:0 0 8px var(--success);
+}
+.field-group{display:flex;flex-direction:column;gap:.45rem;margin-bottom:1.1rem}
+label{font-size:.7rem;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;font-weight:500}
+input[type=text]{
+  background:rgba(255,255,255,.04);border:1px solid var(--border);
+  color:var(--text);border-radius:12px;padding:.8rem 1rem;
+  font-family:var(--mono);font-size:.85rem;width:100%;
+  outline:none;transition:border-color .25s,box-shadow .25s,background .25s;
+}
+input[type=text]:focus{
+  border-color:rgba(110,231,247,.4);
+  box-shadow:0 0 0 3px rgba(110,231,247,.08);
+  background:rgba(255,255,255,.06);
+}
+input[type=text]::placeholder{color:var(--muted);opacity:.6}
+.btn-row{display:flex;gap:.75rem;margin-top:.75rem}
+.btn{
+  flex:1;padding:.8rem;border-radius:12px;border:none;cursor:pointer;
+  font-family:var(--sans);font-size:.85rem;font-weight:600;
+  letter-spacing:.02em;transition:all .2s cubic-bezier(.23,1,.32,1);
+  position:relative;overflow:hidden;
+}
+.btn:active{transform:scale(.96)}
+.btn-primary{
+  background:linear-gradient(135deg,var(--accent),#5bd4e3);
+  color:#07070a;
+  box-shadow:0 4px 20px rgba(110,231,247,.25);
+}
+.btn-primary:hover{
+  box-shadow:0 6px 28px rgba(110,231,247,.35);
+  transform:translateY(-1px);
+}
+.btn-ghost{
+  background:rgba(255,255,255,.05);color:var(--text);
+  border:1px solid var(--border-hi);
+}
+.btn-ghost:hover{
+  background:rgba(255,255,255,.08);
+  border-color:rgba(255,255,255,.2);
+}
+.status-msg{
+  margin-top:1.1rem;font-size:.75rem;font-family:var(--mono);
+  color:var(--muted);text-align:center;min-height:1.2em;
+}
+
+/* ─── Server URL config ─────────────────────────────── */
+.server-config{
+  margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border);
+}
+.server-config summary{
+  cursor:pointer;font-size:.7rem;color:var(--muted);
+  letter-spacing:.08em;text-transform:uppercase;font-weight:500;
+  list-style:none;display:flex;align-items:center;gap:.4rem;
+}
+.server-config summary::before{content:'⚙';font-size:.8rem}
+.server-config .field-group{margin-top:.75rem;margin-bottom:0}
+
+/* ─── Call layout ────────────────────────────────────── */
+#call-view{
+  flex:1;display:none;flex-direction:row;overflow:hidden;
+  animation:fade-in .4s ease both;
+}
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+
+/* ─── Video area ─────────────────────────────────────── */
+#video-area{
+  flex:1;display:grid;position:relative;background:#000;
+  grid-template-columns:1fr;grid-template-rows:1fr;
+  transition:all .35s cubic-bezier(.23,1,.32,1);
+}
+#video-area.has-peer{grid-template-columns:1fr 1fr}
+
+video{width:100%;height:100%;object-fit:cover;display:block}
+#local-video-wrap{position:relative;overflow:hidden}
+#remote-video-wrap{position:relative;overflow:hidden;background:var(--bg)}
+
+/* PiP mode */
+#video-area.has-peer #local-video-wrap{
+  position:absolute;bottom:1.25rem;right:1.25rem;
+  width:200px;height:140px;
+  border-radius:16px;overflow:hidden;
+  border:2px solid rgba(255,255,255,.1);
+  z-index:5;
+  box-shadow:0 8px 32px rgba(0,0,0,.6);
+  transition:all .3s ease;
+}
+#video-area.has-peer #local-video-wrap:hover{
+  transform:scale(1.04);
+  border-color:rgba(110,231,247,.3);
+}
+#video-area.has-peer video{height:100%}
+
+.waiting-overlay{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:1rem;
+  color:var(--muted);font-size:.82rem;letter-spacing:.04em;
+  background:radial-gradient(ellipse at center,rgba(110,231,247,.03) 0%,transparent 70%);
+}
+.pulse-ring{
+  width:56px;height:56px;border-radius:50%;
+  border:2px solid var(--accent);opacity:.5;
+  animation:pulse 2.5s ease-in-out infinite;
+}
+@keyframes pulse{
+  0%,100%{transform:scale(1);opacity:.3}
+  50%{transform:scale(1.2);opacity:.8}
+}
+
+/* ─── Controls bar ───────────────────────────────────── */
+#controls{
+  position:absolute;bottom:0;left:0;right:0;
+  display:flex;align-items:center;justify-content:center;gap:1rem;
+  padding:1.25rem 1rem 1.5rem;
+  background:linear-gradient(transparent 0%,rgba(0,0,0,.7) 40%,rgba(0,0,0,.85) 100%);
+  backdrop-filter:blur(12px);
+  z-index:10;
+}
+.ctrl-btn{
+  width:52px;height:52px;border-radius:50%;border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.1);color:var(--text);
+  backdrop-filter:blur(8px);
+  transition:all .2s cubic-bezier(.23,1,.32,1);
+  position:relative;
+}
+.ctrl-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ctrl-btn:hover{
+  background:rgba(255,255,255,.18);
+  transform:scale(1.08);
+  box-shadow:0 4px 16px rgba(0,0,0,.3);
+}
+.ctrl-btn:active{transform:scale(.92)}
+.ctrl-btn.off{
+  background:rgba(248,113,113,.2);color:var(--danger);
+  border:1px solid rgba(248,113,113,.3);
+}
+.ctrl-btn.off:hover{background:rgba(248,113,113,.3)}
+.ctrl-btn.end{
+  background:var(--danger);width:60px;height:60px;color:#fff;
+  box-shadow:0 4px 24px rgba(248,113,113,.3);
+}
+.ctrl-btn.end svg{width:26px;height:26px}
+.ctrl-btn.end:hover{
+  background:#ef4444;
+  box-shadow:0 6px 32px rgba(248,113,113,.45);
+}
+.ctrl-btn.screen-on{
+  background:var(--accent-dim);color:var(--accent);
+  border:1px solid rgba(110,231,247,.3);
+}
+
+/* ─── Chat panel ─────────────────────────────────────── */
+#chat-panel{
+  width:320px;display:flex;flex-direction:column;
+  background:var(--surface);
+  backdrop-filter:blur(40px) saturate(1.4);
+  -webkit-backdrop-filter:blur(40px) saturate(1.4);
+  border-left:1px solid var(--border);
+  transition:width .3s cubic-bezier(.23,1,.32,1),opacity .3s ease;
+  overflow:hidden;
+}
+#chat-panel.hidden{width:0;opacity:0}
+#chat-header{
+  padding:.9rem 1rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+#chat-header span{font-size:.78rem;font-weight:600;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+#chat-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:.25rem;
+  transition:color .15s;border-radius:6px;}
+#chat-close:hover{color:var(--text)}
+#messages{
+  flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.6rem;
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.08) transparent;
+}
+.msg{display:flex;flex-direction:column;gap:.15rem;max-width:85%;animation:msg-in .25s ease both}
+@keyframes msg-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.msg.self{align-self:flex-end;align-items:flex-end}
+.msg.other{align-self:flex-start}
+.msg-bubble{
+  padding:.55rem .85rem;border-radius:12px;font-size:.82rem;
+  line-height:1.55;word-break:break-word;
+}
+.msg.self .msg-bubble{
+  background:linear-gradient(135deg,var(--accent),#5bd4e3);color:#07070a;
+}
+.msg.other .msg-bubble{background:rgba(255,255,255,.06);color:var(--text)}
+.msg-meta{font-size:.65rem;color:var(--muted);font-family:var(--mono)}
+#chat-footer{
+  padding:.75rem;border-top:1px solid var(--border);
+  display:flex;gap:.5rem;flex-shrink:0;
+}
+#chat-input{
+  flex:1;background:rgba(255,255,255,.04);border:1px solid var(--border);
+  color:var(--text);border-radius:10px;padding:.55rem .75rem;
+  font-family:var(--sans);font-size:.82rem;outline:none;
+  transition:border-color .2s,box-shadow .2s;
+}
+#chat-input:focus{border-color:rgba(110,231,247,.35);box-shadow:0 0 0 3px rgba(110,231,247,.06)}
+#chat-send{
+  background:linear-gradient(135deg,var(--accent),#5bd4e3);color:#07070a;
+  border:none;border-radius:10px;
+  padding:.55rem .85rem;cursor:pointer;font-family:var(--sans);font-weight:600;font-size:.78rem;
+  transition:all .15s;
+}
+#chat-send:hover{opacity:.88;transform:translateY(-1px)}
+
+/* ─── Top bar ────────────────────────────────────────── */
+#topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.55rem 1rem;
+  background:var(--surface);
+  backdrop-filter:blur(30px) saturate(1.4);
+  -webkit-backdrop-filter:blur(30px) saturate(1.4);
+  border-bottom:1px solid var(--border);
+  z-index:20;flex-shrink:0;
+}
+.topbar-left{display:flex;align-items:center;gap:.75rem}
+.topbar-logo{
+  font-size:.95rem;font-weight:700;letter-spacing:-.02em;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;color:transparent;
+}
+#room-tag{
+  font-family:var(--mono);font-size:.68rem;color:var(--muted);padding:.2rem .6rem;
+  background:rgba(255,255,255,.04);border-radius:6px;border:1px solid var(--border);
+}
+.topbar-center{display:flex;align-items:center;gap:.6rem}
+.status-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--success);
+  box-shadow:0 0 8px var(--success);
+  animation:dot-pulse 2s ease-in-out infinite;
+}
+@keyframes dot-pulse{0%,100%{opacity:1}50%{opacity:.5}}
+#call-timer{
+  font-family:var(--mono);font-size:.75rem;color:var(--muted);
+  letter-spacing:.04em;min-width:3.5rem;
+}
+#topbar-actions{display:flex;gap:.5rem;align-items:center}
+.top-btn{
+  background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text);
+  border-radius:8px;padding:.35rem .75rem;font-size:.72rem;cursor:pointer;
+  font-family:var(--sans);font-weight:500;
+  transition:all .2s;white-space:nowrap;
+  display:flex;align-items:center;gap:.35rem;
+}
+.top-btn:hover{border-color:rgba(110,231,247,.35);color:var(--accent)}
+.top-btn.copied{border-color:var(--accent);color:var(--accent)}
+.top-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ─── Notification toast ─────────────────────────────── */
+#toast{
+  position:fixed;bottom:6rem;left:50%;transform:translateX(-50%) translateY(14px);
+  background:var(--surface);
+  backdrop-filter:blur(20px) saturate(1.4);
+  -webkit-backdrop-filter:blur(20px) saturate(1.4);
+  border:1px solid var(--border-hi);
+  color:var(--text);padding:.6rem 1.4rem;border-radius:12px;
+  font-size:.78rem;font-family:var(--mono);
+  opacity:0;transition:opacity .3s,transform .3s cubic-bezier(.23,1,.32,1);
+  pointer-events:none;z-index:100;
+  box-shadow:0 8px 32px rgba(0,0,0,.4);
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ─── Responsive ─────────────────────────────────────── */
+@media(max-width:640px){
+  #chat-panel{position:absolute;right:0;top:0;bottom:0;z-index:30;width:280px}
+  #video-area.has-peer #local-video-wrap{width:130px;height:90px;bottom:.75rem;right:.75rem}
+  .lobby-card{padding:2rem 1.5rem;border-radius:20px}
+  .ctrl-btn{width:46px;height:46px}
+  .ctrl-btn.end{width:52px;height:52px}
+  #controls{gap:.6rem}
+}
+</style>
+</head>
+<body>
+
+<!-- Background layers -->
+<div class="gradient-bg"></div>
+<div class="noise-overlay"></div>
+
+<div id="app">
+
+  <!-- ─── Lobby ─────────────────────────────────────── -->
+  <div id="lobby">
+    <div class="lobby-card">
+      <div class="logo">NexCall</div>
+      <div class="tagline">end-to-end encrypted · WebRTC</div>
+      <div class="field-group">
+        <label>Display name</label>
+        <input id="name-input" type="text" placeholder="Anonymous" maxlength="32"/>
+      </div>
+      <div class="field-group">
+        <label>Room ID <span style="color:var(--muted);font-size:.65rem;letter-spacing:.02em">(leave blank to create)</span></label>
+        <input id="room-input" type="text" placeholder="Paste room ID…" maxlength="64"/>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-create" onclick="createRoom()">New room</button>
+        <button class="btn btn-ghost"   id="btn-join" onclick="joinRoom()">Join</button>
+      </div>
+      <div class="status-msg" id="lobby-status"></div>
+
+      <!-- Server URL config (for Capacitor / standalone use) -->
+      <details class="server-config">
+        <summary>Server settings</summary>
+        <div class="field-group">
+          <label>Signaling Server URL</label>
+          <input id="server-url" type="text" placeholder="https://your-server.onrender.com" maxlength="200"/>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- ─── Call view ─────────────────────────────────── -->
+  <div id="call-view">
+    <!-- Top bar -->
+    <div id="topbar">
+      <div class="topbar-left">
+        <span class="topbar-logo">NexCall</span>
+        <span id="room-tag">—</span>
+      </div>
+      <div class="topbar-center">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="call-timer">00:00</span>
+      </div>
+      <div id="topbar-actions">
+        <button class="top-btn" id="copy-btn" onclick="copyRoomLink()">
+          <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          Copy link
+        </button>
+        <button class="top-btn" id="chat-toggle-btn" onclick="toggleChat()">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          Chat
+        </button>
+      </div>
+    </div>
+
+    <!-- Main content: video + chat -->
+    <div style="flex:1;display:flex;overflow:hidden;position:relative">
+
+      <!-- Video area -->
+      <div id="video-area">
+        <div id="remote-video-wrap">
+          <video id="remote-video" autoplay playsinline></video>
+          <div class="waiting-overlay" id="waiting-overlay">
+            <div class="pulse-ring"></div>
+            <span>Waiting for peer…</span>
+          </div>
+        </div>
+        <div id="local-video-wrap">
+          <video id="local-video" autoplay playsinline muted></video>
+        </div>
+
+        <!-- Controls -->
+        <div id="controls">
+          <button class="ctrl-btn" id="mic-btn" onclick="toggleMic()" title="Mute">
+            <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </button>
+          <button class="ctrl-btn" id="cam-btn" onclick="toggleCam()" title="Camera off">
+            <svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          </button>
+          <button class="ctrl-btn" id="screen-btn" onclick="toggleScreen()" title="Share screen">
+            <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </button>
+          <button class="ctrl-btn end" id="end-btn" onclick="endCall()" title="End call">
+            <svg viewBox="0 0 24 24"><path d="M10.68 13.31a16 16 0 003.41 2.6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 004 .64 2 2 0 012 2v3.28a2 2 0 01-1.82 2A19.79 19.79 0 013.07 4.82 2 2 0 015.07 3h3.28a2 2 0 012 1.72 12.84 12.84 0 00.64 4 2 2 0 01-.45 2.11z" transform="rotate(135 12 12)"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Chat panel -->
+      <div id="chat-panel" class="hidden">
+        <div id="chat-header">
+          <span>Chat</span>
+          <button id="chat-close" onclick="toggleChat()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div id="messages"></div>
+        <div id="chat-footer">
+          <input id="chat-input" type="text" placeholder="Message…" maxlength="500"
+                 onkeydown="if(event.key==='Enter')sendChat()"/>
+          <button id="chat-send" onclick="sendChat()">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ─── CONFIGURATION ───────────────────────────────────────────────
+// For Capacitor builds: set SERVER_URL to your deployed signaling server.
+// The app will load socket.io client from the server and connect to it.
+const STORAGE_KEY = 'nexcall_server_url';
+
+function getServerURL() {
+  // Priority: 1) input field, 2) localStorage, 3) same origin
+  const input = document.getElementById('server-url');
+  const inputVal = input ? input.value.trim() : '';
+  if (inputVal) {
+    localStorage.setItem(STORAGE_KEY, inputVal);
+    return inputVal.replace(/\/+$/, '');
+  }
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) return saved.replace(/\/+$/, '');
+  return '';  // empty means same-origin (for web/PWA deployment)
+}
+
+// ─── Load Socket.io client from server ───────────────────────────
+let socketIOLoaded = false;
+
+function loadSocketIO(serverURL) {
+  return new Promise((resolve, reject) => {
+    if (socketIOLoaded || typeof io !== 'undefined') { resolve(); return; }
+    const src = serverURL
+      ? serverURL + '/socket.io/socket.io.js'
+      : '/socket.io/socket.io.js';
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = () => { socketIOLoaded = true; resolve(); };
+    script.onerror = () => reject(new Error('Cannot load Socket.io from server. Check the server URL.'));
+    document.head.appendChild(script);
+  });
+}
+
+// ─── SVG icon paths ──────────────────────────────────────────────
+const ICONS = {
+  micOn:  '<svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>',
+  micOff: '<svg viewBox="0 0 24 24"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 005.12 2.12M15 9.34V4a3 3 0 00-5.94-.6"/><path d="M17 16.95A7 7 0 015 12v-2m14 0v2c0 .76-.12 1.5-.35 2.18"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>',
+  camOn:  '<svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>',
+  camOff: '<svg viewBox="0 0 24 24"><line x1="1" y1="1" x2="23" y2="23"/><path d="M21 21H3a2 2 0 01-2-2V8a2 2 0 012-2h3m3-3h7a2 2 0 012 2v9.34m0 3.66v1"/></svg>',
+};
+
+// ─── State ───────────────────────────────────────────────────────
+let socket, pc, localStream, screenStream;
+let myId, peerId, roomId;
+let micOn = true, camOn = true, screenSharing = false;
+let chatOpen = false;
+let token = null;
+let callTimerInterval = null, callStartTime = null;
+const myName = () => document.getElementById('name-input').value.trim() || 'Anonymous';
+
+const ICE_SERVERS = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+  ]
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────
+function toast(msg, dur=2500){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),dur);
+}
+function lobbyStatus(msg){document.getElementById('lobby-status').textContent=msg}
+function setRoomTag(id){document.getElementById('room-tag').textContent='Room: '+id.slice(0,13)+'…'}
+
+function apiBase() {
+  return getServerURL();
+}
+
+// ─── Call timer ───────────────────────────────────────────────────
+function startCallTimer(){
+  callStartTime = Date.now();
+  const el = document.getElementById('call-timer');
+  callTimerInterval = setInterval(()=>{
+    const elapsed = Math.floor((Date.now()-callStartTime)/1000);
+    const m = String(Math.floor(elapsed/60)).padStart(2,'0');
+    const s = String(elapsed%60).padStart(2,'0');
+    el.textContent = m+':'+s;
+  },1000);
+}
+function stopCallTimer(){
+  clearInterval(callTimerInterval);
+  callTimerInterval=null;
+  document.getElementById('call-timer').textContent='00:00';
+}
+
+// ─── Auth: get JWT from server ────────────────────────────────────
+async function getToken(){
+  const base = apiBase();
+  const url = base ? base + '/api/token' : '/api/token';
+  const res = await fetch(url, {method:'POST',headers:{'Content-Type':'application/json'}});
+  const data = await res.json();
+  return data.token;
+}
+
+// ─── Lobby actions ────────────────────────────────────────────────
+async function createRoom(){
+  lobbyStatus('Connecting to server…');
+  try{
+    const base = apiBase();
+    await loadSocketIO(base);
+    token = await getToken();
+    const url = base ? base + '/api/room' : '/api/room';
+    const res = await fetch(url, {method:'POST',headers:{'Content-Type':'application/json'}});
+    const data = await res.json();
+    document.getElementById('room-input').value = data.roomId;
+    await startCall(data.roomId);
+  }catch(e){lobbyStatus('Error: '+e.message)}
+}
+
+async function joinRoom(){
+  const rid = document.getElementById('room-input').value.trim();
+  if(!rid){lobbyStatus('Paste a room ID first');return}
+  lobbyStatus('Connecting to server…');
+  try{
+    const base = apiBase();
+    await loadSocketIO(base);
+    token = await getToken();
+    await startCall(rid);
+  }catch(e){lobbyStatus('Error: '+e.message)}
+}
+
+// ─── Start call flow ──────────────────────────────────────────────
+async function startCall(rid){
+  roomId = rid;
+
+  // Get media
+  try{
+    localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+  }catch(e){
+    lobbyStatus('Camera/mic access denied: '+e.message);return;
+  }
+  document.getElementById('local-video').srcObject = localStream;
+
+  // Show call view
+  document.getElementById('lobby').style.display='none';
+  const cv = document.getElementById('call-view');
+  cv.style.display='flex';
+  cv.style.flexDirection='column';
+  setRoomTag(roomId);
+  startCallTimer();
+
+  // Connect socket — point to remote server if configured
+  const base = apiBase();
+  const socketOpts = {transports:['websocket'],auth:{token}};
+  socket = base ? io(base, socketOpts) : io(socketOpts);
+
+  socket.on('connect', ()=>{
+    myId = socket.id;
+    socket.emit('join',{roomId});
+    lobbyStatus('');
+  });
+
+  socket.on('connect_error', e=>{ toast('Connection error: '+e.message); });
+
+  socket.on('room-joined',({peers})=>{
+    if(peers.length>0){
+      peerId = peers[0];
+      initPC();
+      createOffer();
+    }
+  });
+
+  socket.on('peer-joined',({peerId:pid})=>{
+    peerId=pid;
+    initPC();
+  });
+
+  socket.on('offer',async({from,offer})=>{
+    if(!pc) initPC();
+    peerId=from;
+    await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    socket.emit('answer',{to:peerId,answer});
+  });
+
+  socket.on('answer',async({answer})=>{
+    await pc.setRemoteDescription(new RTCSessionDescription(answer));
+  });
+
+  socket.on('ice-candidate',async({candidate})=>{
+    try{ await pc.addIceCandidate(new RTCIceCandidate(candidate)); }catch(_){}
+  });
+
+  socket.on('peer-left',()=>{
+    peerId=null;
+    document.getElementById('remote-video').srcObject=null;
+    document.getElementById('waiting-overlay').style.display='flex';
+    document.getElementById('video-area').classList.remove('has-peer');
+    pc?.close(); pc=null;
+    toast('Peer disconnected');
+  });
+
+  socket.on('room-full',()=>{ toast('Room is full (max 2 peers)'); endCall(); });
+
+  socket.on('chat',({from,text,ts})=>{
+    appendChat(from===myId?'self':'other', text, new Date(ts).toLocaleTimeString());
+    if(!chatOpen) flashChatBtn();
+  });
+}
+
+// ─── PeerConnection ───────────────────────────────────────────────
+function initPC(){
+  pc = new RTCPeerConnection(ICE_SERVERS);
+
+  localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
+
+  pc.ontrack = ({streams:[s]})=>{
+    document.getElementById('remote-video').srcObject=s;
+    document.getElementById('waiting-overlay').style.display='none';
+    document.getElementById('video-area').classList.add('has-peer');
+  };
+
+  pc.onicecandidate = ({candidate})=>{
+    if(candidate && peerId)
+      socket.emit('ice-candidate',{to:peerId,candidate});
+  };
+
+  pc.onconnectionstatechange = ()=>{
+    const state = pc.connectionState;
+    const dot = document.getElementById('status-dot');
+    if(state==='connected'){
+      dot.style.background='var(--success)';dot.style.boxShadow='0 0 8px var(--success)';
+    } else if(state==='connecting'){
+      dot.style.background='var(--accent)';dot.style.boxShadow='0 0 8px var(--accent)';
+    } else if(state==='failed'||state==='disconnected'){
+      dot.style.background='var(--danger)';dot.style.boxShadow='0 0 8px var(--danger)';
+      if(state==='failed') toast('Connection failed — try again');
+    }
+  };
+}
+
+async function createOffer(){
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  socket.emit('offer',{to:peerId,offer});
+}
+
+// ─── Controls ─────────────────────────────────────────────────────
+function toggleMic(){
+  micOn = !micOn;
+  localStream.getAudioTracks().forEach(t=>t.enabled=micOn);
+  const btn = document.getElementById('mic-btn');
+  btn.classList.toggle('off',!micOn);
+  btn.innerHTML = micOn ? ICONS.micOn : ICONS.micOff;
+  toast(micOn ? 'Mic on' : 'Mic muted');
+}
+
+function toggleCam(){
+  camOn = !camOn;
+  localStream.getVideoTracks().forEach(t=>t.enabled=camOn);
+  const btn = document.getElementById('cam-btn');
+  btn.classList.toggle('off',!camOn);
+  btn.innerHTML = camOn ? ICONS.camOn : ICONS.camOff;
+  toast(camOn ? 'Camera on' : 'Camera off');
+}
+
+async function toggleScreen(){
+  if(!screenSharing){
+    try{
+      screenStream = await navigator.mediaDevices.getDisplayMedia({video:true});
+      const screenTrack = screenStream.getVideoTracks()[0];
+      const sender = pc?.getSenders().find(s=>s.track?.kind==='video');
+      if(sender) sender.replaceTrack(screenTrack);
+      document.getElementById('local-video').srcObject = screenStream;
+      document.getElementById('screen-btn').classList.add('screen-on');
+      document.getElementById('screen-btn').title = 'Stop sharing';
+      screenSharing = true;
+      screenTrack.onended = stopScreen;
+      toast('Screen sharing started');
+    }catch(e){ if(e.name!=='NotAllowedError') toast('Screen share error: '+e.message); }
+  } else {
+    stopScreen();
+  }
+}
+
+function stopScreen(){
+  screenSharing = false;
+  document.getElementById('screen-btn').classList.remove('screen-on');
+  document.getElementById('screen-btn').title = 'Share screen';
+  const camTrack = localStream.getVideoTracks()[0];
+  const sender = pc?.getSenders().find(s=>s.track?.kind==='video');
+  if(sender && camTrack) sender.replaceTrack(camTrack);
+  document.getElementById('local-video').srcObject = localStream;
+  screenStream?.getTracks().forEach(t=>t.stop());
+  screenStream = null;
+  toast('Screen sharing stopped');
+}
+
+function endCall(){
+  stopCallTimer();
+  pc?.close(); pc=null;
+  localStream?.getTracks().forEach(t=>t.stop());
+  screenStream?.getTracks().forEach(t=>t.stop());
+  socket?.disconnect();
+  location.reload();
+}
+
+// ─── Room link copy ───────────────────────────────────────────────
+function copyRoomLink(){
+  const base = apiBase() || location.origin;
+  const url = `${base}?room=${roomId}`;
+  navigator.clipboard.writeText(url).then(()=>{
+    const btn = document.getElementById('copy-btn');
+    btn.innerHTML='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Copied!';
+    btn.classList.add('copied');
+    setTimeout(()=>{
+      btn.innerHTML='<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy link';
+      btn.classList.remove('copied');
+    },2000);
+  });
+}
+
+// ─── Chat ─────────────────────────────────────────────────────────
+function toggleChat(){
+  chatOpen = !chatOpen;
+  document.getElementById('chat-panel').classList.toggle('hidden',!chatOpen);
+  const btn = document.getElementById('chat-toggle-btn');
+  if(chatOpen){
+    btn.innerHTML='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Chat';
+  } else {
+    btn.innerHTML='<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Chat';
+  }
+}
+
+function appendChat(type,text,time){
+  const msgs = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className='msg '+type;
+  div.innerHTML=`<div class="msg-bubble">${text}</div><div class="msg-meta">${time}</div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+function sendChat(){
+  const inp = document.getElementById('chat-input');
+  const text = inp.value.trim();
+  if(!text||!socket||!roomId) return;
+  socket.emit('chat',{roomId,text});
+  inp.value='';
+}
+
+function flashChatBtn(){
+  const btn = document.getElementById('chat-toggle-btn');
+  btn.style.borderColor='var(--accent)';btn.style.color='var(--accent)';
+  setTimeout(()=>{btn.style.borderColor='';btn.style.color=''},2000);
+}
+
+// ─── Auto-fill from URL params & restore saved server ─────────────
+window.addEventListener('DOMContentLoaded',()=>{
+  const params = new URLSearchParams(location.search);
+  const rid = params.get('room');
+  if(rid){
+    document.getElementById('room-input').value = rid;
+    lobbyStatus('Room ID pre-filled — click Join');
+  }
+  // Restore saved server URL
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if(saved){
+    document.getElementById('server-url').value = saved;
+  }
+});
+</script>
+</body>
+</html>
