@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/WebRTC-enabled-blue?logo=webrtc" alt="WebRTC"/>
   <img src="https://img.shields.io/badge/PWA-ready-blueviolet?logo=pwa" alt="PWA"/>
   <img src="https://img.shields.io/badge/android-capacitor-green?logo=android" alt="Android"/>
-  <img src="https://img.shields.io/github/license/YOUR_USERNAME/nexcall" alt="License"/>
+  <img src="https://img.shields.io/github/license/N0id3a5i5/nexcall" alt="License"/>
 </p>
 
 ---
@@ -35,7 +35,7 @@
 
 ```bash
 # 1. Clone & install
-git clone https://github.com/YOUR_USERNAME/nexcall.git
+git clone https://github.com/N0id3a5i5/nexcall.git
 cd nexcall
 npm install
 
