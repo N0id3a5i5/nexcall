@@ -1,6 +1,6 @@
 {
   "name": "nexcall",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Secure 1-to-1 video calling app — all 4 phases",
   "main": "server.js",
   "scripts": {
