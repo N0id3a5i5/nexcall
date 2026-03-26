@@ -29,6 +29,8 @@ allprojects {
                 details.useVersion '1.9.25'
             }
         }
+        exclude group: "org.jetbrains.kotlin", module: "kotlin-stdlib-jdk7"
+        exclude group: "org.jetbrains.kotlin", module: "kotlin-stdlib-jdk8"
     }
 }
 
