@@ -16,6 +16,7 @@ const jwt        = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const helmet     = require('helmet');
 const rateLimit  = require('express-rate-limit');
+const cors       = require('cors');
 
 // ─── Config ────────────────────────────────────────────────────────────────
 const PORT        = process.env.PORT        || 3000;
@@ -52,6 +53,22 @@ const limiter = rateLimit({
   message: { error: 'Too many requests, slow down.' }
 });
 app.use(limiter);
+
+// ─── Phase 3: Express CORS middleware ──────────────────────────────────────
+const allowedOrigins = [
+  ALLOWED_ORIGIN,
+  'https://localhost',
+  'capacitor://localhost',
+  'http://localhost',
+];
+
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    cb(new Error(`CORS: origin ${origin} not allowed`));
+  },
+  credentials: true
+}));
 
 app.use(express.json());
 app.use(express.static(__dirname));

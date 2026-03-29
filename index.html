@@ -14,7 +14,6 @@
 <link rel="apple-touch-icon" href="/icons/icon-192.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
@@ -159,6 +158,18 @@ input[type=text]::placeholder{color:var(--muted);opacity:.6}
   margin-top:1.1rem;font-size:.75rem;font-family:var(--mono);
   color:var(--muted);text-align:center;min-height:1.2em;
 }
+
+/* ─── Server URL config ─────────────────────────────── */
+.server-config{
+  margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border);
+}
+.server-config summary{
+  cursor:pointer;font-size:.7rem;color:var(--muted);
+  letter-spacing:.08em;text-transform:uppercase;font-weight:500;
+  list-style:none;display:flex;align-items:center;gap:.4rem;
+}
+.server-config summary::before{content:'⚙';font-size:.8rem}
+.server-config .field-group{margin-top:.75rem;margin-bottom:0}
 
 /* ─── Call layout ────────────────────────────────────── */
 #call-view{
@@ -408,6 +419,15 @@ video{width:100%;height:100%;object-fit:cover;display:block}
         📲 Install App
       </button>
       <div class="status-msg" id="lobby-status"></div>
+
+      <!-- Server URL config (for Capacitor / standalone use) -->
+      <details class="server-config">
+        <summary>Server settings</summary>
+        <div class="field-group">
+          <label>Signaling Server URL</label>
+          <input id="server-url" type="text" placeholder="https://your-server.onrender.com" maxlength="200"/>
+        </div>
+      </details>
     </div>
   </div>
 
@@ -492,6 +512,41 @@ video{width:100%;height:100%;object-fit:cover;display:block}
 <div id="toast"></div>
 
 <script>
+// ─── CONFIGURATION ───────────────────────────────────────────────
+// For Capacitor builds: set SERVER_URL to your deployed signaling server.
+// The app will load socket.io client from the server and connect to it.
+const STORAGE_KEY = 'nexcall_server_url';
+
+function getServerURL() {
+  // Priority: 1) input field, 2) localStorage, 3) same origin
+  const input = document.getElementById('server-url');
+  const inputVal = input ? input.value.trim() : '';
+  if (inputVal) {
+    localStorage.setItem(STORAGE_KEY, inputVal);
+    return inputVal.replace(/\/+$/, '');
+  }
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) return saved.replace(/\/+$/, '');
+  return '';  // empty means same-origin (for web/PWA deployment)
+}
+
+// ─── Load Socket.io client from server ───────────────────────────
+let socketIOLoaded = false;
+
+function loadSocketIO(serverURL) {
+  return new Promise((resolve, reject) => {
+    if (socketIOLoaded || typeof io !== 'undefined') { resolve(); return; }
+    const src = serverURL
+      ? serverURL + '/socket.io/socket.io.js'
+      : '/socket.io/socket.io.js';
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = () => { socketIOLoaded = true; resolve(); };
+    script.onerror = () => reject(new Error('Cannot load Socket.io from server. Check the server URL.'));
+    document.head.appendChild(script);
+  });
+}
+
 // ─── SVG icon paths ──────────────────────────────────────────────
 const ICONS = {
   micOn:  '<svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>',
@@ -525,6 +580,10 @@ function toast(msg, dur=2500){
 function lobbyStatus(msg){document.getElementById('lobby-status').textContent=msg}
 function setRoomTag(id){document.getElementById('room-tag').textContent='Room: '+id.slice(0,13)+'…'}
 
+function apiBase() {
+  return getServerURL();
+}
+
 // ─── Call timer ───────────────────────────────────────────────────
 function startCallTimer(){
   callStartTime = Date.now();
@@ -544,17 +603,22 @@ function stopCallTimer(){
 
 // ─── Auth: get JWT from server ────────────────────────────────────
 async function getToken(){
-  const res = await fetch('/api/token',{method:'POST',headers:{'Content-Type':'application/json'}});
+  const base = apiBase();
+  const url = base ? base + '/api/token' : '/api/token';
+  const res = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'}});
   const data = await res.json();
   return data.token;
 }
 
 // ─── Lobby actions ────────────────────────────────────────────────
 async function createRoom(){
-  lobbyStatus('Creating room…');
+  lobbyStatus('Connecting to server…');
   try{
+    const base = apiBase();
+    await loadSocketIO(base);
     token = await getToken();
-    const res = await fetch('/api/room',{method:'POST',headers:{'Content-Type':'application/json'}});
+    const url = base ? base + '/api/room' : '/api/room';
+    const res = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'}});
     const data = await res.json();
     document.getElementById('room-input').value = data.roomId;
     await startCall(data.roomId);
@@ -564,8 +628,10 @@ async function createRoom(){
 async function joinRoom(){
   const rid = document.getElementById('room-input').value.trim();
   if(!rid){lobbyStatus('Paste a room ID first');return}
-  lobbyStatus('Joining…');
+  lobbyStatus('Connecting to server…');
   try{
+    const base = apiBase();
+    await loadSocketIO(base);
     token = await getToken();
     await startCall(rid);
   }catch(e){lobbyStatus('Error: '+e.message)}
@@ -591,8 +657,10 @@ async function startCall(rid){
   setRoomTag(roomId);
   startCallTimer();
 
-  // Connect socket
-  socket = io({transports:['websocket'],auth:{token}});
+  // Connect socket — point to remote server if configured
+  const base = apiBase();
+  const socketOpts = {transports:['websocket'],auth:{token}};
+  socket = base ? io(base, socketOpts) : io(socketOpts);
 
   socket.on('connect', ()=>{
     myId = socket.id;
@@ -748,7 +816,8 @@ function endCall(){
 
 // ─── Room link copy ───────────────────────────────────────────────
 function copyRoomLink(){
-  const url = `${location.origin}?room=${roomId}`;
+  const base = apiBase() || location.origin;
+  const url = `${base}?room=${roomId}`;
   navigator.clipboard.writeText(url).then(()=>{
     const btn = document.getElementById('copy-btn');
     btn.innerHTML='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Copied!';
@@ -795,13 +864,19 @@ function flashChatBtn(){
   setTimeout(()=>{btn.style.borderColor='';btn.style.color=''},2000);
 }
 
-// ─── Auto-join from URL ───────────────────────────────────────────
+// ─── Auto-fill from URL params & restore saved server ─────────────
 window.addEventListener('DOMContentLoaded',()=>{
   const params = new URLSearchParams(location.search);
   const rid = params.get('room');
   if(rid){
     document.getElementById('room-input').value = rid;
     lobbyStatus('Room ID pre-filled — click Join');
+  }
+  // Restore saved server URL
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if(saved){
+    const input = document.getElementById('server-url');
+    if (input) input.value = saved;
   }
 });
 
