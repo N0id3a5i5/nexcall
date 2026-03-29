@@ -670,6 +670,11 @@ async function startCall(rid){
 
   socket.on('connect_error', e=>{ toast('Connection error: '+e.message); });
 
+  socket.on('error', err=>{
+    toast('Error: ' + (err.message || err));
+    endCall();
+  });
+
   socket.on('room-joined',({peers})=>{
     if(peers.length>0){
       peerId = peers[0];
