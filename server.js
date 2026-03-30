@@ -128,7 +128,7 @@ const io = new Server(server, {
 // ─── Phase 3: Socket.io rate limiting per-IP ──────────────────────────────
 const socketConnectCount = new Map(); // ip → count
 
-io.use((socket, next) => {
+const rateLimitMiddleware = (socket, next) => {
   const ip = socket.handshake.address;
   const count = (socketConnectCount.get(ip) || 0) + 1;
   socketConnectCount.set(ip, count);
@@ -136,7 +136,9 @@ io.use((socket, next) => {
     return next(new Error('Too many connections from this IP'));
   }
   next();
-});
+};
+
+io.use(rateLimitMiddleware);
 
 // ─── Phase 3: JWT authentication middleware ────────────────────────────────
 io.use((socket, next) => {
@@ -242,8 +244,12 @@ process.on('SIGTERM', () => {
   server.close(() => process.exit(0));
 });
 
-server.listen(PORT, () => {
-  console.log(`[server] Listening on port ${PORT}`);
-  console.log(`[server] Open: ${USE_HTTPS ? 'https' : 'http'}://localhost:${PORT}`);
-  console.log(`[server] JWT secret: ${JWT_SECRET.slice(0, 12)}...`);
-});
+if (require.main === module) {
+  server.listen(PORT, () => {
+    console.log(`[server] Listening on port ${PORT}`);
+    console.log(`[server] Open: ${USE_HTTPS ? 'https' : 'http'}://localhost:${PORT}`);
+    console.log(`[server] JWT secret: ${JWT_SECRET.slice(0, 12)}...`);
+  });
+}
+
+module.exports = { app, server, io, rateLimitMiddleware, socketConnectCount };
