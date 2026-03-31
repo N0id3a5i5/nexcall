@@ -3,42 +3,48 @@
  * Cache-first for static assets, network-first for API calls.
  */
 
-const CACHE_NAME = 'nexcall-v1';
+const CACHE_NAME = "nexcall-v1";
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
+  "/",
+  "/index.html",
+  "/manifest.json",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
 ];
 
 // Install — pre-cache static shell
-self.addEventListener('install', (event) => {
+self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)),
   );
   self.skipWaiting();
 });
 
 // Activate — clean up old caches
-self.addEventListener('activate', (event) => {
+self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
+    caches.keys().then((keys) => {
+      const deletions = [];
+      for (const k of keys) {
+        if (k !== CACHE_NAME) {
+          deletions.push(caches.delete(k));
+        }
+      }
+      return Promise.all(deletions);
+    }),
   );
   self.clients.claim();
 });
 
 // Fetch — network-first for API & sockets, cache-first for static
-self.addEventListener('fetch', (event) => {
+self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
   // Skip non-GET, socket.io, and API requests — always go to network
   if (
-    event.request.method !== 'GET' ||
-    url.pathname.startsWith('/api/') ||
-    url.pathname.startsWith('/socket.io/')
+    event.request.method !== "GET" ||
+    url.pathname.startsWith("/api/") ||
+    url.pathname.startsWith("/socket.io/")
   ) {
     return;
   }
@@ -50,13 +56,15 @@ self.addEventListener('fetch', (event) => {
         .then((response) => {
           if (response && response.status === 200) {
             const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+            caches
+              .open(CACHE_NAME)
+              .then((cache) => cache.put(event.request, clone));
           }
           return response;
         })
         .catch(() => cached);
 
       return cached || fetchPromise;
-    })
+    }),
   );
 });
