@@ -213,6 +213,7 @@ io.on('connection', (socket) => {
   // Chat message (Phase 3: sanitize text)
   socket.on('chat', (data) => {
     if (!validate(data, ['roomId', 'text'])) return;
+    if (socket.currentRoom !== data.roomId) return;
     const text = String(data.text).slice(0, 500).replace(/[<>]/g, c => c === '<' ? '&lt;' : '&gt;');
     io.to(data.roomId).emit('chat', { from: socket.id, text, ts: Date.now() });
   });
