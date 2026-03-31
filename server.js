@@ -21,6 +21,8 @@ const cors       = require('cors');
 // ─── Config ────────────────────────────────────────────────────────────────
 const PORT        = process.env.PORT        || 3000;
 const JWT_SECRET  = process.env.JWT_SECRET  || 'change-this-in-production-' + uuidv4();
+const IS_DEV_API_KEY = !process.env.API_KEY;
+const API_KEY     = process.env.API_KEY     || uuidv4(); // default to secure random key if not provided
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://localhost:3000';
 const USE_HTTPS   = process.env.USE_HTTPS !== 'false'; // set USE_HTTPS=false for plain HTTP on cloud
 
@@ -76,6 +78,11 @@ app.use(express.static(__dirname));
 // ─── Auth endpoint — issues a short-lived JWT ──────────────────────────────
 // In production, validate real credentials here.
 app.post('/api/token', (req, res) => {
+  const apiKey = req.body?.apiKey;
+  if (!apiKey || apiKey !== API_KEY) {
+    return res.status(401).json({ error: 'Unauthorized: Invalid API Key' });
+  }
+
   const userId = uuidv4(); // anonymous but unique identity
   const token  = jwt.sign({ userId }, JWT_SECRET, { expiresIn: '2h' });
   res.json({ token, userId });
@@ -246,4 +253,9 @@ server.listen(PORT, () => {
   console.log(`[server] Listening on port ${PORT}`);
   console.log(`[server] Open: ${USE_HTTPS ? 'https' : 'http'}://localhost:${PORT}`);
   console.log(`[server] JWT secret: ${JWT_SECRET.slice(0, 12)}...`);
+  if (IS_DEV_API_KEY) {
+    console.log(`[server] API Key (auto-generated): ${API_KEY}`); // Output full generated key for dev
+  } else {
+    console.log(`[server] API Key: ${API_KEY.slice(0, 12)}...`); // Output masked API key for production
+  }
 });
