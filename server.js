@@ -242,8 +242,12 @@ process.on('SIGTERM', () => {
   server.close(() => process.exit(0));
 });
 
-server.listen(PORT, () => {
-  console.log(`[server] Listening on port ${PORT}`);
-  console.log(`[server] Open: ${USE_HTTPS ? 'https' : 'http'}://localhost:${PORT}`);
-  console.log(`[server] JWT secret: ${JWT_SECRET.slice(0, 12)}...`);
-});
+if (require.main === module) {
+  server.listen(PORT, () => {
+    console.log(`[server] Listening on port ${PORT}`);
+    console.log(`[server] Open: ${USE_HTTPS ? 'https' : 'http'}://localhost:${PORT}`);
+    console.log(`[server] JWT secret: ${JWT_SECRET.slice(0, 12)}...`);
+  });
+}
+
+module.exports = { app, JWT_SECRET };
