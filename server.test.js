@@ -1,3 +1,7 @@
+/**
+ * @jest-environment node
+ */
+
 const { rateLimitMiddleware, socketConnectCount } = require('./server');
 
 describe('Socket.io Rate Limiting Middleware', () => {
