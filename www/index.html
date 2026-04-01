@@ -839,7 +839,18 @@ function appendChat(type,text,time){
   const msgs = document.getElementById('messages');
   const div = document.createElement('div');
   div.className='msg '+type;
-  div.innerHTML=`<div class="msg-bubble">${text}</div><div class="msg-meta">${time}</div>`;
+
+  const bubbleDiv = document.createElement('div');
+  bubbleDiv.className = 'msg-bubble';
+  bubbleDiv.textContent = text;
+
+  const metaDiv = document.createElement('div');
+  metaDiv.className = 'msg-meta';
+  metaDiv.textContent = time;
+
+  div.appendChild(bubbleDiv);
+  div.appendChild(metaDiv);
+
   msgs.appendChild(div);
   msgs.scrollTop=msgs.scrollHeight;
 }
