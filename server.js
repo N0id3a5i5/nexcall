@@ -20,7 +20,7 @@ const cors       = require('cors');
 // ─── Config ────────────────────────────────────────────────────────────────
 const PORT        = process.env.PORT        || 3000;
 const JWT_SECRET  = process.env.JWT_SECRET  || 'change-this-in-production-' + uuidv4();
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://localhost:3000';
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://localhost:3000,http://localhost:3000';
 const USE_HTTPS   = process.env.USE_HTTPS !== 'false'; // set USE_HTTPS=false for plain HTTP on cloud
 
 const app = express();
@@ -30,6 +30,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
+      scriptSrcAttr: ["'unsafe-inline'"],
       scriptSrc:  ["'self'", "'unsafe-inline'"],
       styleSrc:   ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc:    ["'self'", 'https://fonts.gstatic.com'],
@@ -62,10 +63,7 @@ const allowedOrigins = [
 ];
 
 app.use(cors({
-  origin: (origin, cb) => {
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    cb(new Error(`CORS: origin ${origin} not allowed`));
-  },
+  origin: (origin, cb) => cb(null, true),
   credentials: true
 }));
 
@@ -103,18 +101,7 @@ if (USE_HTTPS && fs.existsSync('server.key') && fs.existsSync('server.cert')) {
 // ─── Socket.io ─────────────────────────────────────────────────────────────
 const io = new Server(server, {
   cors: {
-    origin: (origin, cb) => {
-      // Phase 3: lock down to allowed origin only
-      // Also allow Capacitor WebView origins
-      const allowed = [
-        ALLOWED_ORIGIN,
-        'https://localhost',
-        'capacitor://localhost',
-        'http://localhost',
-      ];
-      if (!origin || allowed.includes(origin)) return cb(null, true);
-      cb(new Error(`CORS: origin ${origin} not allowed`));
-    },
+    origin: (origin, cb) => cb(null, true),
     methods: ['GET', 'POST'],
     credentials: true,
   },
