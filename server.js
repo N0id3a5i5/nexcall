@@ -252,4 +252,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { app, server, io, rateLimitMiddleware, socketConnectCount };
+module.exports = { app, server, io, rateLimitMiddleware, socketConnectCount, JWT_SECRET };
