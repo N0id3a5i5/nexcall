@@ -223,7 +223,11 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     const ip = socket.handshake.address;
     const count = socketConnectCount.get(ip) || 1;
-    socketConnectCount.set(ip, Math.max(0, count - 1));
+    if (count <= 1) {
+      socketConnectCount.delete(ip);
+    } else {
+      socketConnectCount.set(ip, count - 1);
+    }
 
     if (socket.currentRoom) {
       const room = rooms.get(socket.currentRoom);
