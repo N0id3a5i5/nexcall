@@ -9,6 +9,7 @@
 const fs         = require('fs');
 const https      = require('https');
 const http       = require('http');
+const crypto     = require('crypto');
 const express    = require('express');
 const { Server } = require('socket.io');
 const jwt        = require('jsonwebtoken');
@@ -19,7 +20,16 @@ const cors       = require('cors');
 
 // ─── Config ────────────────────────────────────────────────────────────────
 const PORT        = process.env.PORT        || 3000;
-const JWT_SECRET  = process.env.JWT_SECRET  || 'change-this-in-production-' + uuidv4();
+
+let JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('FATAL: process.env.JWT_SECRET is required in production.');
+  }
+  // Fallback for local development using a cryptographically secure random key
+  JWT_SECRET = crypto.randomBytes(64).toString('hex');
+}
+
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://localhost:3000';
 const USE_HTTPS   = process.env.USE_HTTPS !== 'false'; // set USE_HTTPS=false for plain HTTP on cloud
 
@@ -248,7 +258,6 @@ if (require.main === module) {
   server.listen(PORT, () => {
     console.log(`[server] Listening on port ${PORT}`);
     console.log(`[server] Open: ${USE_HTTPS ? 'https' : 'http'}://localhost:${PORT}`);
-    console.log(`[server] JWT secret: ${JWT_SECRET.slice(0, 12)}...`);
   });
 }
 
