@@ -192,27 +192,45 @@ io.on('connection', (socket) => {
     console.log(`[room] ${roomId} — ${room.size}/2 peers`);
   });
 
+  // Authorization helper for signaling and chat
+  const canSignal = (toId) => {
+    if (!socket.currentRoom) return false;
+    const room = rooms.get(socket.currentRoom);
+    // Ensure both sender and recipient are in the same room
+    return room && room.has(socket.id) && room.has(toId);
+  };
+
+  const canChat = (roomId) => {
+    if (!socket.currentRoom || socket.currentRoom !== roomId) return false;
+    const room = rooms.get(roomId);
+    return room && room.has(socket.id);
+  };
+
   // WebRTC offer
   socket.on('offer', (data) => {
     if (!validate(data, ['to', 'offer'])) return;
+    if (!canSignal(data.to)) return;
     socket.to(data.to).emit('offer', { from: socket.id, offer: data.offer });
   });
 
   // WebRTC answer
   socket.on('answer', (data) => {
     if (!validate(data, ['to', 'answer'])) return;
+    if (!canSignal(data.to)) return;
     socket.to(data.to).emit('answer', { from: socket.id, answer: data.answer });
   });
 
   // ICE candidates
   socket.on('ice-candidate', (data) => {
     if (!validate(data, ['to', 'candidate'])) return;
+    if (!canSignal(data.to)) return;
     socket.to(data.to).emit('ice-candidate', { from: socket.id, candidate: data.candidate });
   });
 
   // Chat message (Phase 3: sanitize text)
   socket.on('chat', (data) => {
     if (!validate(data, ['roomId', 'text'])) return;
+    if (!canChat(data.roomId)) return;
     const text = String(data.text).slice(0, 500).replace(/[<>]/g, c => c === '<' ? '&lt;' : '&gt;');
     io.to(data.roomId).emit('chat', { from: socket.id, text, ts: Date.now() });
   });
