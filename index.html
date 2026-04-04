@@ -2,16 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no"/>
 <meta name="description" content="NexCall — Secure end-to-end encrypted 1-to-1 video calling powered by WebRTC."/>
 <title>NexCall — Secure Video</title>
-<link rel="manifest" href="/manifest.json"/>
 <meta name="theme-color" content="#07070a"/>
 <meta name="mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="apple-mobile-web-app-title" content="NexCall"/>
-<link rel="apple-touch-icon" href="/icons/icon-192.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
@@ -104,6 +99,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
   font-size:1.75rem;font-weight:700;letter-spacing:-.04em;
   background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 100%);
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;color:transparent;
   margin-bottom:.25rem;
 }
 .tagline{
@@ -190,19 +186,31 @@ video{width:100%;height:100%;object-fit:cover;display:block}
 #local-video-wrap{position:relative;overflow:hidden}
 #remote-video-wrap{position:relative;overflow:hidden;background:var(--bg)}
 
-/* PiP mode */
+/* PiP mode — WhatsApp-inspired */
 #video-area.has-peer #local-video-wrap{
-  position:absolute;bottom:1.25rem;right:1.25rem;
-  width:200px;height:140px;
-  border-radius:16px;overflow:hidden;
-  border:2px solid rgba(255,255,255,.1);
+  position:absolute;bottom:6rem;right:1rem;
+  width:120px;height:160px;
+  border-radius:14px;overflow:hidden;
+  border:2px solid rgba(255,255,255,.15);
   z-index:5;
-  box-shadow:0 8px 32px rgba(0,0,0,.6);
-  transition:all .3s ease;
+  box-shadow:0 4px 20px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.05);
+  transition: left .35s cubic-bezier(.34,1.56,.64,1), top .35s cubic-bezier(.34,1.56,.64,1),
+              right .35s cubic-bezier(.34,1.56,.64,1), bottom .35s cubic-bezier(.34,1.56,.64,1),
+              width .3s ease, height .3s ease, border-color .2s ease;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
-#video-area.has-peer #local-video-wrap:hover{
-  transform:scale(1.04);
-  border-color:rgba(110,231,247,.3);
+#video-area.has-peer #local-video-wrap.dragging {
+  cursor: grabbing;
+  transition: width .3s ease, height .3s ease !important;
+  box-shadow:0 8px 32px rgba(0,0,0,.7), 0 0 0 2px rgba(110,231,247,.2);
+  border-color:rgba(110,231,247,.35);
+  transform: scale(1.05);
+}
+#video-area.has-peer #local-video-wrap.pip-large {
+  width:200px;height:268px;
 }
 #video-area.has-peer video{height:100%}
 
@@ -265,60 +273,181 @@ video{width:100%;height:100%;object-fit:cover;display:block}
   border:1px solid rgba(110,231,247,.3);
 }
 
-/* ─── Chat panel ─────────────────────────────────────── */
+/* ─── Chat panel — WhatsApp-inspired ─────────────────── */
 #chat-panel{
-  width:320px;display:flex;flex-direction:column;
-  background:var(--surface);
-  backdrop-filter:blur(40px) saturate(1.4);
-  -webkit-backdrop-filter:blur(40px) saturate(1.4);
-  border-left:1px solid var(--border);
-  transition:width .3s cubic-bezier(.23,1,.32,1),opacity .3s ease;
+  width:100%;display:flex;flex-direction:column;
+  background:#0b141a;
+  border-left:1px solid rgba(255,255,255,.06);
   overflow:hidden;
+  transform:translateX(100%);
+  transition:transform .3s cubic-bezier(.4,0,.2,1);
 }
-#chat-panel.hidden{width:0;opacity:0}
+#chat-panel.visible{
+  transform:translateX(0);
+}
+#chat-panel.hidden{
+  transform:translateX(100%);
+}
+
+/* Chat header — WhatsApp dark teal */
 #chat-header{
-  padding:.9rem 1rem;border-bottom:1px solid var(--border);
+  padding:.65rem 1rem;height:52px;
+  background:#1f2c33;
   display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+  border-bottom:1px solid rgba(255,255,255,.04);
 }
-#chat-header span{font-size:.78rem;font-weight:600;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
-#chat-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:.25rem;
-  transition:color .15s;border-radius:6px;}
-#chat-close:hover{color:var(--text)}
+#chat-header .chat-header-left{
+  display:flex;align-items:center;gap:.65rem;
+}
+#chat-header .chat-header-left .chat-avatar{
+  width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#00a884,#25d366);
+  display:flex;align-items:center;justify-content:center;
+  font-size:.85rem;font-weight:600;color:#fff;
+}
+#chat-header .chat-header-info{display:flex;flex-direction:column;gap:.1rem}
+#chat-header .chat-header-info .chat-header-name{
+  font-size:.85rem;font-weight:600;color:#e9edef;letter-spacing:0;
+}
+#chat-header .chat-header-info .chat-header-status{
+  font-size:.68rem;color:#8696a0;
+}
+#chat-close{
+  background:none;border:none;color:#8696a0;cursor:pointer;padding:.35rem;
+  transition:color .15s;border-radius:50%;width:36px;height:36px;
+  display:flex;align-items:center;justify-content:center;
+}
+#chat-close:hover{color:#e9edef;background:rgba(255,255,255,.06)}
+
+/* Messages area — WhatsApp dark wallpaper */
 #messages{
-  flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.6rem;
-  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.08) transparent;
+  flex:1;overflow-y:auto;padding:.75rem .9rem;display:flex;flex-direction:column;gap:.2rem;
+  background-color:#0b141a;
+  background-image:
+    url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.1) transparent;
 }
-.msg{display:flex;flex-direction:column;gap:.15rem;max-width:85%;animation:msg-in .25s ease both}
-@keyframes msg-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+#messages::-webkit-scrollbar{width:6px}
+#messages::-webkit-scrollbar-track{background:transparent}
+#messages::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:3px}
+
+/* Message bubbles — WhatsApp style */
+.msg{
+  display:flex;flex-direction:column;max-width:80%;
+  animation:msg-in .2s cubic-bezier(.4,0,.2,1) both;
+  margin-bottom:.15rem;
+}
+@keyframes msg-in{from{opacity:0;transform:translateY(4px) scale(.98)}to{opacity:1;transform:none}}
 .msg.self{align-self:flex-end;align-items:flex-end}
-.msg.other{align-self:flex-start}
+.msg.other{align-self:flex-start;align-items:flex-start}
+
 .msg-bubble{
-  padding:.55rem .85rem;border-radius:12px;font-size:.82rem;
-  line-height:1.55;word-break:break-word;
+  padding:.4rem .55rem .25rem .6rem;border-radius:8px;font-size:.84rem;
+  line-height:1.4;word-break:break-word;
+  position:relative;
+  min-width:80px;
 }
 .msg.self .msg-bubble{
-  background:linear-gradient(135deg,var(--accent),#5bd4e3);color:#07070a;
+  background:#005c4b;
+  color:#e9edef;
+  border-top-right-radius:3px;
 }
-.msg.other .msg-bubble{background:rgba(255,255,255,.06);color:var(--text)}
-.msg-meta{font-size:.65rem;color:var(--muted);font-family:var(--mono)}
+.msg.other .msg-bubble{
+  background:#1f2c33;
+  color:#e9edef;
+  border-top-left-radius:3px;
+}
+
+/* Bubble tail triangles */
+.msg.self .msg-bubble::after{
+  content:'';position:absolute;top:0;right:-7px;
+  width:0;height:0;border-left:8px solid #005c4b;
+  border-top:8px solid transparent;
+}
+.msg.other .msg-bubble::after{
+  content:'';position:absolute;top:0;left:-7px;
+  width:0;height:0;border-right:8px solid #1f2c33;
+  border-top:8px solid transparent;
+}
+/* Only show tail on first message in a group */
+.msg.self + .msg.self .msg-bubble::after,
+.msg.other + .msg.other .msg-bubble::after {
+  display:none;
+}
+.msg.self + .msg.self .msg-bubble,
+.msg.other + .msg.other .msg-bubble {
+  border-radius:8px;
+}
+
+/* Inline timestamp + ticks inside bubble */
+.msg-inline-meta{
+  float:right;
+  display:flex;align-items:center;gap:.25rem;
+  margin-left:.6rem;
+  margin-top:.25rem;
+  font-size:.62rem;color:rgba(255,255,255,.45);
+  white-space:nowrap;
+  line-height:1;
+}
+.msg.self .msg-inline-meta{color:rgba(255,255,255,.55)}
+.msg-inline-meta .msg-ticks{
+  display:inline-flex;align-items:center;
+}
+.msg-inline-meta .msg-ticks svg{
+  width:16px;height:11px;fill:none;stroke:rgba(83,206,229,.85);stroke-width:1.5;
+  stroke-linecap:round;stroke-linejoin:round;
+}
+
+/* Date separator */
+.chat-date-sep{
+  align-self:center;
+  background:#1c2a31;
+  color:#8696a0;
+  font-size:.7rem;
+  padding:.3rem .75rem;
+  border-radius:8px;
+  margin:.6rem 0;
+  box-shadow:0 1px 2px rgba(0,0,0,.2);
+}
+
+/* Chat footer — WhatsApp style */
 #chat-footer{
-  padding:.75rem;border-top:1px solid var(--border);
-  display:flex;gap:.5rem;flex-shrink:0;
+  padding:.5rem .65rem;
+  background:#1f2c33;
+  display:flex;gap:.5rem;align-items:flex-end;flex-shrink:0;
 }
 #chat-input{
-  flex:1;background:rgba(255,255,255,.04);border:1px solid var(--border);
-  color:var(--text);border-radius:10px;padding:.55rem .75rem;
-  font-family:var(--sans);font-size:.82rem;outline:none;
-  transition:border-color .2s,box-shadow .2s;
+  flex:1;background:#2a3942;border:none;
+  color:#e9edef;border-radius:22px;padding:.6rem 1rem;
+  font-family:var(--sans);font-size:.84rem;outline:none;
+  transition:background .15s;
+  min-height:40px;max-height:120px;
+  resize:none;
+  line-height:1.4;
 }
-#chat-input:focus{border-color:rgba(110,231,247,.35);box-shadow:0 0 0 3px rgba(110,231,247,.06)}
+#chat-input::placeholder{color:#8696a0}
+#chat-input:focus{background:#323f48}
 #chat-send{
-  background:linear-gradient(135deg,var(--accent),#5bd4e3);color:#07070a;
-  border:none;border-radius:10px;
-  padding:.55rem .85rem;cursor:pointer;font-family:var(--sans);font-weight:600;font-size:.78rem;
+  width:42px;height:42px;border-radius:50%;border:none;cursor:pointer;
+  background:#00a884;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
   transition:all .15s;
+  box-shadow:0 2px 8px rgba(0,168,132,.3);
 }
-#chat-send:hover{opacity:.88;transform:translateY(-1px)}
+#chat-send:hover{background:#02b890;transform:scale(1.06)}
+#chat-send:active{transform:scale(.94)}
+#chat-send svg{width:20px;height:20px;fill:#e9edef;stroke:none}
+
+/* Unread badge on chat toggle button */
+.unread-badge{
+  position:absolute;top:-4px;right:-4px;
+  background:#25d366;color:#fff;font-size:.6rem;font-weight:700;
+  min-width:18px;height:18px;line-height:18px;text-align:center;
+  border-radius:9px;padding:0 4px;
+  font-family:var(--sans);
+  animation:badge-pop .3s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes badge-pop{from{transform:scale(0)}to{transform:scale(1)}}
 
 /* ─── Top bar ────────────────────────────────────────── */
 #topbar{
@@ -335,6 +464,7 @@ video{width:100%;height:100%;object-fit:cover;display:block}
   font-size:.95rem;font-weight:700;letter-spacing:-.02em;
   background:linear-gradient(135deg,var(--accent),var(--accent2));
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;color:transparent;
 }
 #room-tag{
   font-family:var(--mono);font-size:.68rem;color:var(--muted);padding:.2rem .6rem;
@@ -352,7 +482,7 @@ video{width:100%;height:100%;object-fit:cover;display:block}
   font-family:var(--mono);font-size:.75rem;color:var(--muted);
   letter-spacing:.04em;min-width:3.5rem;
 }
-#topbar-actions{display:flex;gap:.5rem;align-items:center}
+#topbar-actions{display:flex;gap:.5rem;align-items:center;position:relative}
 .top-btn{
   background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text);
   border-radius:8px;padding:.35rem .75rem;font-size:.72rem;cursor:pointer;
@@ -362,7 +492,39 @@ video{width:100%;height:100%;object-fit:cover;display:block}
 }
 .top-btn:hover{border-color:rgba(110,231,247,.35);color:var(--accent)}
 .top-btn.copied{border-color:var(--accent);color:var(--accent)}
-.top-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.top-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* Dropdown Menu */
+#menu-dropdown{
+  position:absolute;top:100%;right:0;margin-top:.5rem;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;
+  display:flex;flex-direction:column;
+  min-width:160px;
+  overflow:hidden;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+  backdrop-filter:blur(30px) saturate(1.4);
+  -webkit-backdrop-filter:blur(30px) saturate(1.4);
+  opacity:0;pointer-events:none;transform:translateY(-10px);
+  transition:all .2s cubic-bezier(.23,1,.32,1);
+  z-index:100;
+}
+#menu-dropdown.show{
+  opacity:1;pointer-events:auto;transform:translateY(0);
+}
+.menu-item{
+  background:none;border:none;color:var(--text);
+  padding:.75rem 1rem;font-size:.8rem;cursor:pointer;
+  font-family:var(--sans);font-weight:500;
+  display:flex;align-items:center;gap:.5rem;
+  text-align:left;width:100%;
+  transition:background .2s;
+  border-bottom:1px solid var(--border-hi);
+}
+.menu-item:last-child{border-bottom:none}
+.menu-item:hover{background:rgba(255,255,255,.05);color:var(--accent)}
+.menu-item svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 /* ─── Notification toast ─────────────────────────────── */
 #toast{
@@ -380,9 +542,41 @@ video{width:100%;height:100%;object-fit:cover;display:block}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 /* ─── Responsive ─────────────────────────────────────── */
+#chat-panel{position:absolute;right:0;top:0;bottom:0;z-index:30;height:100%;background:#0b141a}
+
+@media(min-width:641px){
+  #chat-panel{width:380px}
+}
+
 @media(max-width:640px){
-  #chat-panel{position:absolute;right:0;top:0;bottom:0;z-index:30;width:280px}
-  #video-area.has-peer #local-video-wrap{width:130px;height:90px;bottom:.75rem;right:.75rem}
+  #chat-panel{width:100%}
+  #video-area.has-peer #local-video-wrap{width:100px;height:134px;bottom:5.5rem;right:.75rem}
+
+  body.pip-over-chat #video-area.has-peer {
+    position:absolute;
+    width:100px;
+    height:134px;
+    bottom:5rem;
+    right:1rem;
+    z-index:40;
+    border-radius:12px;
+    overflow:hidden;
+  }
+  body.pip-over-chat #video-area.has-peer #remote-video {
+    border-radius: 12px;
+  }
+  body.pip-over-chat #video-area.has-peer #local-video-wrap {
+    width:40px !important;
+    height:54px !important;
+    bottom:.5rem !important;
+    right:.5rem !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+  }
+  body.pip-over-chat #video-area.has-peer #controls {
+    display:none;
+  }
   .lobby-card{padding:2rem 1.5rem;border-radius:20px}
   .ctrl-btn{width:46px;height:46px}
   .ctrl-btn.end{width:52px;height:52px}
@@ -415,9 +609,6 @@ video{width:100%;height:100%;object-fit:cover;display:block}
         <button class="btn btn-primary" id="btn-create" onclick="createRoom()">New room</button>
         <button class="btn btn-ghost"   id="btn-join" onclick="joinRoom()">Join</button>
       </div>
-      <button class="btn btn-ghost" id="btn-install" style="display:none;margin-top:.75rem;width:100%;border:1px dashed rgba(110,231,247,.3);color:var(--accent)" onclick="installPWA()">
-        📲 Install App
-      </button>
       <div class="status-msg" id="lobby-status"></div>
 
       <!-- Server URL config (for Capacitor / standalone use) -->
@@ -444,14 +635,20 @@ video{width:100%;height:100%;object-fit:cover;display:block}
         <span id="call-timer">00:00</span>
       </div>
       <div id="topbar-actions">
-        <button class="top-btn" id="copy-btn" onclick="copyRoomLink()">
-          <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-          Copy link
+        <button class="top-btn" id="menu-btn" onclick="toggleMenu(event)" title="More options">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
         </button>
-        <button class="top-btn" id="chat-toggle-btn" onclick="toggleChat()">
-          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-          Chat
-        </button>
+        <div id="menu-dropdown">
+          <button class="menu-item" id="chat-toggle-btn" onclick="toggleChat()" style="position:relative">
+            <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            Chat
+            <span id="unread-badge" class="unread-badge" style="display:none"></span>
+          </button>
+          <button class="menu-item" id="copy-btn" onclick="copyRoomLink()">
+            <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            Copy link
+          </button>
+        </div>
       </div>
     </div>
 
@@ -473,17 +670,17 @@ video{width:100%;height:100%;object-fit:cover;display:block}
 
         <!-- Controls -->
         <div id="controls">
-          <button class="ctrl-btn" id="mic-btn" onclick="toggleMic()" title="Mute">
-            <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          <button class="ctrl-btn" id="screen-btn" onclick="toggleScreen()" title="Share screen">
+            <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           </button>
           <button class="ctrl-btn" id="cam-btn" onclick="toggleCam()" title="Camera off">
             <svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
           </button>
-          <button class="ctrl-btn" id="screen-btn" onclick="toggleScreen()" title="Share screen">
-            <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <button class="ctrl-btn" id="mic-btn" onclick="toggleMic()" title="Mute">
+            <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
           </button>
           <button class="ctrl-btn end" id="end-btn" onclick="endCall()" title="End call">
-            <svg viewBox="0 0 24 24"><path d="M10.68 13.31a16 16 0 003.41 2.6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 004 .64 2 2 0 012 2v3.28a2 2 0 01-1.82 2A19.79 19.79 0 013.07 4.82 2 2 0 015.07 3h3.28a2 2 0 012 1.72 12.84 12.84 0 00.64 4 2 2 0 01-.45 2.11z" transform="rotate(135 12 12)"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M10.68 13.31a16 16 0 003.41 2.6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 004 .64 2 2 0 012 2v3.28a2 2 0 01-1.82 2A19.79 19.79 0 013.07 4.82 2 2 0 015.07 3h3.28a2 2 0 012 1.72 12.84 12.84 0 00.64 4 2 2 0 01-.45 2.11z"/></svg>
           </button>
         </div>
       </div>
@@ -491,16 +688,24 @@ video{width:100%;height:100%;object-fit:cover;display:block}
       <!-- Chat panel -->
       <div id="chat-panel" class="hidden">
         <div id="chat-header">
-          <span>Chat</span>
-          <button id="chat-close" onclick="toggleChat()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
+          <div class="chat-header-left">
+            <button id="chat-close" onclick="toggleChat()" title="Back">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <div class="chat-avatar" id="chat-peer-avatar">P</div>
+            <div class="chat-header-info">
+              <span class="chat-header-name" id="chat-peer-name">Peer</span>
+              <span class="chat-header-status" id="chat-peer-status">in call</span>
+            </div>
+          </div>
         </div>
         <div id="messages"></div>
         <div id="chat-footer">
-          <input id="chat-input" type="text" placeholder="Message…" maxlength="500"
-                 onkeydown="if(event.key==='Enter')sendChat()"/>
-          <button id="chat-send" onclick="sendChat()">Send</button>
+          <input id="chat-input" type="text" placeholder="Type a message" maxlength="500"
+                 onkeydown="if(event.key==='Enter'){event.preventDefault();sendChat()}"/>
+          <button id="chat-send" onclick="sendChat()" title="Send">
+            <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>
         </div>
       </div>
     </div>
@@ -562,6 +767,7 @@ let micOn = true, camOn = true, screenSharing = false;
 let chatOpen = false;
 let token = null;
 let callTimerInterval = null, callStartTime = null;
+let unreadCount = 0;
 const myName = () => document.getElementById('name-input').value.trim() || 'Anonymous';
 
 const ICE_SERVERS = {
@@ -605,7 +811,7 @@ function stopCallTimer(){
 async function getToken(){
   const base = apiBase();
   const url = base ? base + '/api/token' : '/api/token';
-  const res = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'}});
+  const res = await fetch(url, {method:'POST',headers:{'Content-Type':'application/json'}});
   const data = await res.json();
   return data.token;
 }
@@ -618,7 +824,7 @@ async function createRoom(){
     await loadSocketIO(base);
     token = await getToken();
     const url = base ? base + '/api/room' : '/api/room';
-    const res = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'}});
+    const res = await fetch(url, {method:'POST',headers:{'Content-Type':'application/json'}});
     const data = await res.json();
     document.getElementById('room-input').value = data.roomId;
     await startCall(data.roomId);
@@ -669,6 +875,7 @@ async function startCall(rid){
   });
 
   socket.on('connect_error', e=>{ toast('Connection error: '+e.message); });
+  socket.on('error', e=>{ toast('Error: ' + (e.message || e)); });
 
   socket.on('room-joined',({peers})=>{
     if(peers.length>0){
@@ -705,6 +912,16 @@ async function startCall(rid){
     document.getElementById('remote-video').srcObject=null;
     document.getElementById('waiting-overlay').style.display='flex';
     document.getElementById('video-area').classList.remove('has-peer');
+    
+    // Reset PiP inline styles on disconnect
+    const pip = document.getElementById('local-video-wrap');
+    if (pip) {
+      pip.style.left = '';
+      pip.style.top = '';
+      pip.style.right = '';
+      pip.style.bottom = '';
+    }
+
     pc?.close(); pc=null;
     toast('Peer disconnected');
   });
@@ -712,8 +929,11 @@ async function startCall(rid){
   socket.on('room-full',()=>{ toast('Room is full (max 2 peers)'); endCall(); });
 
   socket.on('chat',({from,text,ts})=>{
-    appendChat(from===myId?'self':'other', text, new Date(ts).toLocaleTimeString());
-    if(!chatOpen) flashChatBtn();
+    appendChat(from===myId?'self':'other', text, new Date(ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}));
+    if(!chatOpen && from!==myId) {
+      unreadCount++;
+      updateUnreadBadge();
+    }
   });
 }
 
@@ -814,54 +1034,104 @@ function endCall(){
   location.reload();
 }
 
+// ─── Topbar Menu ──────────────────────────────────────────────────
+function toggleMenu(e) {
+  if (e) e.stopPropagation();
+  const menu = document.getElementById('menu-dropdown');
+  menu.classList.toggle('show');
+}
+window.addEventListener('click', (e) => {
+  const menu = document.getElementById('menu-dropdown');
+  const btn = document.getElementById('menu-btn');
+  if (menu && menu.classList.contains('show') && !menu.contains(e.target) && !btn.contains(e.target)) {
+    menu.classList.remove('show');
+  }
+});
+
 // ─── Room link copy ───────────────────────────────────────────────
 function copyRoomLink(){
   const base = apiBase() || location.origin;
   const url = `${base}?room=${roomId}`;
   navigator.clipboard.writeText(url).then(()=>{
     const btn = document.getElementById('copy-btn');
-    btn.innerHTML='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Copied!';
+    btn.innerHTML='<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Copied!';
     btn.classList.add('copied');
     setTimeout(()=>{
       btn.innerHTML='<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy link';
       btn.classList.remove('copied');
     },2000);
+    const menu = document.getElementById('menu-dropdown');
+    if(menu) menu.classList.remove('show');
+    toast('Link copied to clipboard');
   });
 }
 
 // ─── Chat ─────────────────────────────────────────────────────────
 function toggleChat(){
   chatOpen = !chatOpen;
-  document.getElementById('chat-panel').classList.toggle('hidden',!chatOpen);
-  const btn = document.getElementById('chat-toggle-btn');
-  if(chatOpen){
-    btn.innerHTML='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Chat';
+  const panel = document.getElementById('chat-panel');
+  
+  if(chatOpen) {
+    panel.classList.remove('hidden');
+    // Force reflow then add visible class for animation
+    panel.offsetHeight;
+    panel.classList.add('visible');
+    // Clear unread
+    unreadCount = 0;
+    updateUnreadBadge();
+    // Auto-focus input
+    setTimeout(() => document.getElementById('chat-input').focus(), 350);
   } else {
-    btn.innerHTML='<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Chat';
+    panel.classList.remove('visible');
+    panel.classList.add('hidden');
   }
+
+  // Toggle PiP over Chat
+  if(chatOpen && peerId){
+    document.body.classList.add('pip-over-chat');
+  }else{
+    document.body.classList.remove('pip-over-chat');
+  }
+
+  const menu = document.getElementById('menu-dropdown');
+  if(menu) menu.classList.remove('show');
 }
 
-function appendChat(type,text,time){
+function appendChat(type, text, time){
   const msgs = document.getElementById('messages');
   const div = document.createElement('div');
-  div.className='msg '+type;
-  div.innerHTML=`<div class="msg-bubble">${text}</div><div class="msg-meta">${time}</div>`;
+  div.className = 'msg ' + type;
+
+  // WhatsApp-style ticks for self messages
+  const ticks = type === 'self'
+    ? `<span class="msg-ticks"><svg viewBox="0 0 16 11"><path d="M11.07 0.73L4.53 7.27 1.97 4.71" /><path d="M14.07 0.73L7.53 7.27 6 5.71" /></svg></span>`
+    : '';
+
+  div.innerHTML = `<div class="msg-bubble">${text}<span class="msg-inline-meta"><span>${time}</span>${ticks}</span></div>`;
   msgs.appendChild(div);
-  msgs.scrollTop=msgs.scrollHeight;
+  
+  // Smooth scroll to bottom
+  msgs.scrollTo({top: msgs.scrollHeight, behavior: 'smooth'});
 }
 
 function sendChat(){
   const inp = document.getElementById('chat-input');
   const text = inp.value.trim();
-  if(!text||!socket||!roomId) return;
-  socket.emit('chat',{roomId,text});
-  inp.value='';
+  if(!text || !socket || !roomId) return;
+  socket.emit('chat', {roomId, text});
+  inp.value = '';
+  inp.focus();
 }
 
-function flashChatBtn(){
-  const btn = document.getElementById('chat-toggle-btn');
-  btn.style.borderColor='var(--accent)';btn.style.color='var(--accent)';
-  setTimeout(()=>{btn.style.borderColor='';btn.style.color=''},2000);
+function updateUnreadBadge(){
+  const badge = document.getElementById('unread-badge');
+  if(!badge) return;
+  if(unreadCount > 0){
+    badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
 }
 
 // ─── Auto-fill from URL params & restore saved server ─────────────
@@ -875,44 +1145,130 @@ window.addEventListener('DOMContentLoaded',()=>{
   // Restore saved server URL
   const saved = localStorage.getItem(STORAGE_KEY);
   if(saved){
-    const input = document.getElementById('server-url');
-    if (input) input.value = saved;
+    document.getElementById('server-url').value = saved;
   }
+  
+  // init PiP dragging
+  initPiPDrag();
 });
 
-// ─── PWA: Service Worker Registration ─────────────────────────────
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js')
-    .then(reg => console.log('[PWA] SW registered, scope:', reg.scope))
-    .catch(err => console.warn('[PWA] SW registration failed:', err));
-}
+// ─── PiP Drag & Snap Logic — WhatsApp-style ─────────────────────────
+function initPiPDrag() {
+  const pip = document.getElementById('local-video-wrap');
+  const container = document.getElementById('video-area');
+  
+  let isDragging = false;
+  let hasMoved = false;
+  let startX, startY, initialLeft, initialTop;
+  let lastTapTime = 0;
 
-// ─── PWA: Install Prompt ──────────────────────────────────────────
-let deferredPrompt = null;
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  const btn = document.getElementById('btn-install');
-  if (btn) btn.style.display = 'block';
-});
+  const getXY = (e) => {
+    if(e.touches && e.touches.length) return {x: e.touches[0].clientX, y: e.touches[0].clientY};
+    return {x: e.clientX, y: e.clientY};
+  };
 
-function installPWA() {
-  if (!deferredPrompt) return;
-  deferredPrompt.prompt();
-  deferredPrompt.userChoice.then((choice) => {
-    if (choice.outcome === 'accepted') {
-      toast('NexCall installed! Check your home screen');
-      document.getElementById('btn-install').style.display = 'none';
+  const dragStart = (e) => {
+    if(!container.classList.contains('has-peer')) return;
+    if(document.body.classList.contains('pip-over-chat')) return;
+    
+    const {x, y} = getXY(e);
+    startX = x;
+    startY = y;
+    hasMoved = false;
+    
+    const rect = pip.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    
+    initialLeft = rect.left - containerRect.left;
+    initialTop = rect.top - containerRect.top;
+    
+    pip.style.left = initialLeft + 'px';
+    pip.style.top = initialTop + 'px';
+    pip.style.bottom = 'auto';
+    pip.style.right = 'auto';
+    
+    isDragging = true;
+    pip.classList.add('dragging');
+  };
+
+  const dragMove = (e) => {
+    if(!isDragging) return;
+    e.preventDefault();
+    
+    const {x, y} = getXY(e);
+    const dx = x - startX;
+    const dy = y - startY;
+    
+    // Consider it a real drag if moved more than 5px
+    if(Math.abs(dx) > 5 || Math.abs(dy) > 5) hasMoved = true;
+    
+    // Clamp to container bounds
+    const contRect = container.getBoundingClientRect();
+    const pipW = pip.offsetWidth;
+    const pipH = pip.offsetHeight;
+    const margin = 8;
+    
+    let newLeft = initialLeft + dx;
+    let newTop = initialTop + dy;
+    newLeft = Math.max(margin, Math.min(newLeft, contRect.width - pipW - margin));
+    newTop = Math.max(margin, Math.min(newTop, contRect.height - pipH - margin));
+    
+    pip.style.left = newLeft + 'px';
+    pip.style.top = newTop + 'px';
+  };
+
+  const dragEnd = (e) => {
+    if(!isDragging) return;
+    isDragging = false;
+    pip.classList.remove('dragging');
+    
+    // Double-tap to toggle size
+    if(!hasMoved) {
+      const now = Date.now();
+      if(now - lastTapTime < 350) {
+        pip.classList.toggle('pip-large');
+        lastTapTime = 0;
+      } else {
+        lastTapTime = now;
+      }
     }
-    deferredPrompt = null;
-  });
-}
+    
+    // Snap to nearest edge (left or right) like WhatsApp
+    const rect = pip.getBoundingClientRect();
+    const contRect = container.getBoundingClientRect();
+    
+    const centerX = rect.left + rect.width / 2 - contRect.left;
+    const currentTop = rect.top - contRect.top;
+    
+    const padding = 12;
+    const isLeft = centerX < contRect.width / 2;
+    const pipH = pip.offsetHeight;
+    const controlsElem = document.getElementById('controls');
+    const controlsH = controlsElem ? controlsElem.offsetHeight : 80;
+    
+    // Clamp vertical position
+    let clampedTop = Math.max(padding, Math.min(currentTop, contRect.height - pipH - controlsH - padding));
+    
+    pip.style.left = 'auto';
+    pip.style.right = 'auto';
+    pip.style.top = clampedTop + 'px';
+    pip.style.bottom = 'auto';
 
-window.addEventListener('appinstalled', () => {
-  toast('NexCall installed successfully! 🎉');
-  document.getElementById('btn-install').style.display = 'none';
-  deferredPrompt = null;
-});
+    if(isLeft) {
+      pip.style.left = padding + 'px';
+    } else {
+      pip.style.right = padding + 'px';
+    }
+  };
+
+  pip.addEventListener('mousedown', dragStart);
+  document.addEventListener('mousemove', dragMove, {passive: false});
+  document.addEventListener('mouseup', dragEnd);
+  
+  pip.addEventListener('touchstart', dragStart, {passive: false});
+  document.addEventListener('touchmove', dragMove, {passive: false});
+  document.addEventListener('touchend', dragEnd);
+}
 </script>
 </body>
 </html>

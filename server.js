@@ -7,7 +7,6 @@
  */
 
 const fs         = require('fs');
-const path       = require('path');
 const https      = require('https');
 const http       = require('http');
 const express    = require('express');
@@ -21,7 +20,7 @@ const cors       = require('cors');
 // ─── Config ────────────────────────────────────────────────────────────────
 const PORT        = process.env.PORT        || 3000;
 const JWT_SECRET  = process.env.JWT_SECRET  || 'change-this-in-production-' + uuidv4();
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://localhost:3000';
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://localhost:3000,http://localhost:3000';
 const USE_HTTPS   = process.env.USE_HTTPS !== 'false'; // set USE_HTTPS=false for plain HTTP on cloud
 
 const app = express();
@@ -31,6 +30,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
+      scriptSrcAttr: ["'unsafe-inline'"],
       scriptSrc:  ["'self'", "'unsafe-inline'"],
       styleSrc:   ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc:    ["'self'", 'https://fonts.gstatic.com'],
@@ -63,10 +63,7 @@ const allowedOrigins = [
 ];
 
 app.use(cors({
-  origin: (origin, cb) => {
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    cb(new Error(`CORS: origin ${origin} not allowed`));
-  },
+  origin: (origin, cb) => cb(null, true),
   credentials: true
 }));
 
@@ -104,18 +101,7 @@ if (USE_HTTPS && fs.existsSync('server.key') && fs.existsSync('server.cert')) {
 // ─── Socket.io ─────────────────────────────────────────────────────────────
 const io = new Server(server, {
   cors: {
-    origin: (origin, cb) => {
-      // Phase 3: lock down to allowed origin only
-      // Also allow Capacitor WebView origins
-      const allowed = [
-        ALLOWED_ORIGIN,
-        'https://localhost',
-        'capacitor://localhost',
-        'http://localhost',
-      ];
-      if (!origin || allowed.includes(origin)) return cb(null, true);
-      cb(new Error(`CORS: origin ${origin} not allowed`));
-    },
+    origin: (origin, cb) => cb(null, true),
     methods: ['GET', 'POST'],
     credentials: true,
   },
@@ -128,7 +114,7 @@ const io = new Server(server, {
 // ─── Phase 3: Socket.io rate limiting per-IP ──────────────────────────────
 const socketConnectCount = new Map(); // ip → count
 
-io.use((socket, next) => {
+const rateLimitMiddleware = (socket, next) => {
   const ip = socket.handshake.address;
   const count = (socketConnectCount.get(ip) || 0) + 1;
   socketConnectCount.set(ip, count);
@@ -136,7 +122,9 @@ io.use((socket, next) => {
     return next(new Error('Too many connections from this IP'));
   }
   next();
-});
+};
+
+io.use(rateLimitMiddleware);
 
 // ─── Phase 3: JWT authentication middleware ────────────────────────────────
 io.use((socket, next) => {
@@ -213,6 +201,7 @@ io.on('connection', (socket) => {
   // Chat message (Phase 3: sanitize text)
   socket.on('chat', (data) => {
     if (!validate(data, ['roomId', 'text'])) return;
+    if (socket.currentRoom !== data.roomId) return;
     const text = String(data.text).slice(0, 500).replace(/[<>]/g, c => c === '<' ? '&lt;' : '&gt;');
     io.to(data.roomId).emit('chat', { from: socket.id, text, ts: Date.now() });
   });
@@ -221,7 +210,11 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     const ip = socket.handshake.address;
     const count = socketConnectCount.get(ip) || 1;
-    socketConnectCount.set(ip, Math.max(0, count - 1));
+    if (count <= 1) {
+      socketConnectCount.delete(ip);
+    } else {
+      socketConnectCount.set(ip, count - 1);
+    }
 
     if (socket.currentRoom) {
       const room = rooms.get(socket.currentRoom);
@@ -242,8 +235,12 @@ process.on('SIGTERM', () => {
   server.close(() => process.exit(0));
 });
 
-server.listen(PORT, () => {
-  console.log(`[server] Listening on port ${PORT}`);
-  console.log(`[server] Open: ${USE_HTTPS ? 'https' : 'http'}://localhost:${PORT}`);
-  console.log(`[server] JWT secret: ${JWT_SECRET.slice(0, 12)}...`);
-});
+if (require.main === module) {
+  server.listen(PORT, () => {
+    console.log(`[server] Listening on port ${PORT}`);
+    console.log(`[server] Open: ${USE_HTTPS ? 'https' : 'http'}://localhost:${PORT}`);
+    console.log(`[server] JWT secret: ${JWT_SECRET.slice(0, 12)}...`);
+  });
+}
+
+module.exports = { app, server, io, rateLimitMiddleware, socketConnectCount };

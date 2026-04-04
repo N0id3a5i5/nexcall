@@ -349,7 +349,7 @@ video{width:100%;height:100%;object-fit:cover;display:block}
   font-family:var(--mono);font-size:.75rem;color:var(--muted);
   letter-spacing:.04em;min-width:3.5rem;
 }
-#topbar-actions{display:flex;gap:.5rem;align-items:center}
+#topbar-actions{display:flex;gap:.5rem;align-items:center;position:relative}
 .top-btn{
   background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text);
   border-radius:8px;padding:.35rem .75rem;font-size:.72rem;cursor:pointer;
@@ -359,7 +359,39 @@ video{width:100%;height:100%;object-fit:cover;display:block}
 }
 .top-btn:hover{border-color:rgba(110,231,247,.35);color:var(--accent)}
 .top-btn.copied{border-color:var(--accent);color:var(--accent)}
-.top-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.top-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* Dropdown Menu */
+#menu-dropdown{
+  position:absolute;top:100%;right:0;margin-top:.5rem;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;
+  display:flex;flex-direction:column;
+  min-width:160px;
+  overflow:hidden;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+  backdrop-filter:blur(30px) saturate(1.4);
+  -webkit-backdrop-filter:blur(30px) saturate(1.4);
+  opacity:0;pointer-events:none;transform:translateY(-10px);
+  transition:all .2s cubic-bezier(.23,1,.32,1);
+  z-index:100;
+}
+#menu-dropdown.show{
+  opacity:1;pointer-events:auto;transform:translateY(0);
+}
+.menu-item{
+  background:none;border:none;color:var(--text);
+  padding:.75rem 1rem;font-size:.8rem;cursor:pointer;
+  font-family:var(--sans);font-weight:500;
+  display:flex;align-items:center;gap:.5rem;
+  text-align:left;width:100%;
+  transition:background .2s;
+  border-bottom:1px solid var(--border-hi);
+}
+.menu-item:last-child{border-bottom:none}
+.menu-item:hover{background:rgba(255,255,255,.05);color:var(--accent)}
+.menu-item svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 /* ─── Notification toast ─────────────────────────────── */
 #toast{
@@ -377,9 +409,32 @@ video{width:100%;height:100%;object-fit:cover;display:block}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 /* ─── Responsive ─────────────────────────────────────── */
+#chat-panel{position:absolute;right:0;top:0;bottom:0;z-index:30;width:100%;height:100%;background:var(--bg)}
 @media(max-width:640px){
-  #chat-panel{position:absolute;right:0;top:0;bottom:0;z-index:30;width:280px}
-  #video-area.has-peer #local-video-wrap{width:130px;height:90px;bottom:.75rem;right:.75rem}
+  #video-area.has-peer #local-video-wrap{width:100px;height:140px;bottom:5.5rem;right:.75rem}
+
+body.pip-over-chat #video-area.has-peer {
+  position:absolute;
+  width:120px;
+  height:160px;
+  bottom:5rem;
+  right:1rem;
+  z-index:40;
+  border-radius:12px;
+  overflow:hidden;
+}
+body.pip-over-chat #video-area.has-peer #remote-video {
+  border-radius: 12px;
+}
+body.pip-over-chat #video-area.has-peer #local-video-wrap {
+  width:40px;
+  height:60px;
+  bottom:.5rem;
+  right:.5rem;
+}
+body.pip-over-chat #video-area.has-peer #controls {
+  display:none;
+}
   .lobby-card{padding:2rem 1.5rem;border-radius:20px}
   .ctrl-btn{width:46px;height:46px}
   .ctrl-btn.end{width:52px;height:52px}
@@ -438,14 +493,19 @@ video{width:100%;height:100%;object-fit:cover;display:block}
         <span id="call-timer">00:00</span>
       </div>
       <div id="topbar-actions">
-        <button class="top-btn" id="copy-btn" onclick="copyRoomLink()">
-          <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-          Copy link
+        <button class="top-btn" id="menu-btn" onclick="toggleMenu(event)" title="More options">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
         </button>
-        <button class="top-btn" id="chat-toggle-btn" onclick="toggleChat()">
-          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-          Chat
-        </button>
+        <div id="menu-dropdown">
+          <button class="menu-item" id="chat-toggle-btn" onclick="toggleChat()">
+            <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            Chat
+          </button>
+          <button class="menu-item" id="copy-btn" onclick="copyRoomLink()">
+            <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            Copy link
+          </button>
+        </div>
       </div>
     </div>
 
@@ -467,17 +527,17 @@ video{width:100%;height:100%;object-fit:cover;display:block}
 
         <!-- Controls -->
         <div id="controls">
-          <button class="ctrl-btn" id="mic-btn" onclick="toggleMic()" title="Mute">
-            <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          <button class="ctrl-btn" id="screen-btn" onclick="toggleScreen()" title="Share screen">
+            <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           </button>
           <button class="ctrl-btn" id="cam-btn" onclick="toggleCam()" title="Camera off">
             <svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
           </button>
-          <button class="ctrl-btn" id="screen-btn" onclick="toggleScreen()" title="Share screen">
-            <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <button class="ctrl-btn" id="mic-btn" onclick="toggleMic()" title="Mute">
+            <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
           </button>
           <button class="ctrl-btn end" id="end-btn" onclick="endCall()" title="End call">
-            <svg viewBox="0 0 24 24"><path d="M10.68 13.31a16 16 0 003.41 2.6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 004 .64 2 2 0 012 2v3.28a2 2 0 01-1.82 2A19.79 19.79 0 013.07 4.82 2 2 0 015.07 3h3.28a2 2 0 012 1.72 12.84 12.84 0 00.64 4 2 2 0 01-.45 2.11z" transform="rotate(135 12 12)"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M10.68 13.31a16 16 0 003.41 2.6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 004 .64 2 2 0 012 2v3.28a2 2 0 01-1.82 2A19.79 19.79 0 013.07 4.82 2 2 0 015.07 3h3.28a2 2 0 012 1.72 12.84 12.84 0 00.64 4 2 2 0 01-.45 2.11z"/></svg>
           </button>
         </div>
       </div>
@@ -808,18 +868,49 @@ function endCall(){
   location.reload();
 }
 
+// ─── Topbar Menu ──────────────────────────────────────────────────
+function toggleMenu(e) {
+  if (e) e.stopPropagation();
+  const menu = document.getElementById('menu-dropdown');
+  menu.classList.toggle('show');
+}
+window.addEventListener('click', (e) => {
+  const menu = document.getElementById('menu-dropdown');
+  const btn = document.getElementById('menu-btn');
+  if (menu && menu.classList.contains('show') && !menu.contains(e.target) && !btn.contains(e.target)) {
+    menu.classList.remove('show');
+  }
+});
+
+// ─── Topbar Menu ──────────────────────────────────────────────────
+function toggleMenu(e) {
+  if (e) e.stopPropagation();
+  const menu = document.getElementById('menu-dropdown');
+  menu.classList.toggle('show');
+}
+window.addEventListener('click', (e) => {
+  const menu = document.getElementById('menu-dropdown');
+  const btn = document.getElementById('menu-btn');
+  if (menu && menu.classList.contains('show') && !menu.contains(e.target) && !btn.contains(e.target)) {
+    menu.classList.remove('show');
+  }
+});
+
 // ─── Room link copy ───────────────────────────────────────────────
 function copyRoomLink(){
   const base = apiBase() || location.origin;
   const url = `${base}?room=${roomId}`;
   navigator.clipboard.writeText(url).then(()=>{
     const btn = document.getElementById('copy-btn');
-    btn.innerHTML='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Copied!';
+    btn.innerHTML='<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Copied!';
     btn.classList.add('copied');
     setTimeout(()=>{
       btn.innerHTML='<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy link';
       btn.classList.remove('copied');
     },2000);
+    const menu = document.getElementById('menu-dropdown');
+    if(menu) menu.classList.remove('show');
+    toast('Link copied to clipboard');
   });
 }
 
@@ -827,12 +918,16 @@ function copyRoomLink(){
 function toggleChat(){
   chatOpen = !chatOpen;
   document.getElementById('chat-panel').classList.toggle('hidden',!chatOpen);
-  const btn = document.getElementById('chat-toggle-btn');
-  if(chatOpen){
-    btn.innerHTML='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Chat';
-  } else {
-    btn.innerHTML='<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Chat';
+
+  // Toggle PiP over Chat
+  if(chatOpen && peerId){
+    document.body.classList.add('pip-over-chat');
+  }else{
+    document.body.classList.remove('pip-over-chat');
   }
+
+  const menu = document.getElementById('menu-dropdown');
+  if(menu) menu.classList.remove('show');
 }
 
 function appendChat(type,text,time){
