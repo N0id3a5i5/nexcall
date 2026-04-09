@@ -169,56 +169,60 @@ input[type=text]::placeholder{color:var(--muted);opacity:.6}
 
 /* ─── Call layout ────────────────────────────────────── */
 #call-view{
-  flex:1;display:none;flex-direction:row;overflow:hidden;
+  flex:1;display:none;position:relative;overflow:hidden;
   animation:fade-in .4s ease both;
 }
 @keyframes fade-in{from{opacity:0}to{opacity:1}}
 
-/* ─── Video area ─────────────────────────────────────── */
+/* ─── Video area — full viewport ─────────────────────── */
 #video-area{
-  flex:1;display:grid;position:relative;background:#000;
-  grid-template-columns:1fr;grid-template-rows:1fr;
-  transition:all .35s cubic-bezier(.23,1,.32,1);
+  position:absolute;inset:0;display:block;background:#000;
+  z-index:1;
 }
-#video-area.has-peer{grid-template-columns:1fr 1fr}
 
 video{width:100%;height:100%;object-fit:cover;display:block}
-#local-video-wrap{position:relative;overflow:hidden}
-#remote-video-wrap{position:relative;overflow:hidden;background:var(--bg)}
 
-/* PiP mode — WhatsApp-inspired */
-#video-area.has-peer #local-video-wrap{
-  position:absolute;bottom:6rem;right:1rem;
+/* Remote fills everything edge-to-edge */
+#remote-video-wrap{position:absolute;inset:0;overflow:hidden;background:#0a0a0f}
+#remote-video-wrap video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+
+/* Self PiP — floating glowing card */
+#local-video-wrap{
+  position:absolute;bottom:7rem;right:1rem;
   width:120px;height:160px;
-  border-radius:14px;overflow:hidden;
-  border:2px solid rgba(255,255,255,.15);
-  z-index:5;
-  box-shadow:0 4px 20px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.05);
+  border-radius:16px;overflow:hidden;
+  border:2px solid rgba(255,255,255,.18);
+  z-index:15;
+  box-shadow:
+    0 4px 24px rgba(0,0,0,.6),
+    0 0 0 1px rgba(255,255,255,.05),
+    0 0 20px rgba(110,231,247,.12);
   transition: left .35s cubic-bezier(.34,1.56,.64,1), top .35s cubic-bezier(.34,1.56,.64,1),
               right .35s cubic-bezier(.34,1.56,.64,1), bottom .35s cubic-bezier(.34,1.56,.64,1),
-              width .3s ease, height .3s ease, border-color .2s ease;
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-  -webkit-user-select: none;
+              width .3s ease, height .3s ease, border-color .25s ease, box-shadow .25s ease;
+  cursor:grab;
+  touch-action:none;
+  user-select:none;
+  -webkit-user-select:none;
 }
-#video-area.has-peer #local-video-wrap.dragging {
-  cursor: grabbing;
-  transition: width .3s ease, height .3s ease !important;
-  box-shadow:0 8px 32px rgba(0,0,0,.7), 0 0 0 2px rgba(110,231,247,.2);
-  border-color:rgba(110,231,247,.35);
-  transform: scale(1.05);
+#local-video-wrap video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#local-video-wrap.dragging{
+  cursor:grabbing;
+  transition:width .3s ease, height .3s ease !important;
+  box-shadow:0 8px 32px rgba(0,0,0,.7), 0 0 0 2px rgba(110,231,247,.3), 0 0 30px rgba(110,231,247,.15);
+  border-color:rgba(110,231,247,.4);
+  transform:scale(1.05);
 }
-#video-area.has-peer #local-video-wrap.pip-large {
+#local-video-wrap.pip-large{
   width:200px;height:268px;
 }
-#video-area.has-peer video{height:100%}
 
 .waiting-overlay{
   position:absolute;inset:0;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:1rem;
   color:var(--muted);font-size:.82rem;letter-spacing:.04em;
-  background:radial-gradient(ellipse at center,rgba(110,231,247,.03) 0%,transparent 70%);
+  background:radial-gradient(ellipse at center,rgba(110,231,247,.04) 0%,transparent 70%);
+  z-index:2;
 }
 .pulse-ring{
   width:56px;height:56px;border-radius:50%;
@@ -230,27 +234,37 @@ video{width:100%;height:100%;object-fit:cover;display:block}
   50%{transform:scale(1.2);opacity:.8}
 }
 
-/* ─── Controls bar ───────────────────────────────────── */
+/* ─── Controls bar — floating pill ───────────────────── */
 #controls{
-  position:absolute;bottom:0;left:0;right:0;
-  display:flex;align-items:center;justify-content:center;gap:1rem;
-  padding:1.25rem 1rem 1.5rem;
-  background:linear-gradient(transparent 0%,rgba(0,0,0,.7) 40%,rgba(0,0,0,.85) 100%);
-  backdrop-filter:blur(12px);
-  z-index:10;
+  position:absolute;bottom:24px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;justify-content:center;gap:.85rem;
+  padding:.75rem 1.5rem;
+  background:rgba(20,20,28,.55);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:9999px;
+  backdrop-filter:blur(24px) saturate(1.4);
+  -webkit-backdrop-filter:blur(24px) saturate(1.4);
+  z-index:20;
+  box-shadow:0 8px 32px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.04);
+  opacity:1;
+  transition:opacity .4s ease, transform .4s cubic-bezier(.23,1,.32,1);
+}
+#controls.auto-hidden{
+  opacity:0;
+  transform:translateX(-50%) translateY(16px);
+  pointer-events:none;
 }
 .ctrl-btn{
-  width:52px;height:52px;border-radius:50%;border:none;cursor:pointer;
+  width:50px;height:50px;border-radius:50%;border:none;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
   background:rgba(255,255,255,.1);color:var(--text);
-  backdrop-filter:blur(8px);
   transition:all .2s cubic-bezier(.23,1,.32,1);
   position:relative;
 }
 .ctrl-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .ctrl-btn:hover{
-  background:rgba(255,255,255,.18);
-  transform:scale(1.08);
+  background:rgba(255,255,255,.2);
+  transform:scale(1.1);
   box-shadow:0 4px 16px rgba(0,0,0,.3);
 }
 .ctrl-btn:active{transform:scale(.92)}
@@ -260,10 +274,10 @@ video{width:100%;height:100%;object-fit:cover;display:block}
 }
 .ctrl-btn.off:hover{background:rgba(248,113,113,.3)}
 .ctrl-btn.end{
-  background:var(--danger);width:60px;height:60px;color:#fff;
+  background:var(--danger);width:56px;height:56px;color:#fff;
   box-shadow:0 4px 24px rgba(248,113,113,.3);
 }
-.ctrl-btn.end svg{width:26px;height:26px}
+.ctrl-btn.end svg{width:24px;height:24px}
 .ctrl-btn.end:hover{
   background:#ef4444;
   box-shadow:0 6px 32px rgba(248,113,113,.45);
@@ -449,15 +463,22 @@ video{width:100%;height:100%;object-fit:cover;display:block}
 }
 @keyframes badge-pop{from{transform:scale(0)}to{transform:scale(1)}}
 
-/* ─── Top bar ────────────────────────────────────────── */
+/* ─── Top bar — floating over video ──────────────────── */
 #topbar{
+  position:absolute;top:0;left:0;right:0;
   display:flex;align-items:center;justify-content:space-between;
   padding:.55rem 1rem;
-  background:var(--surface);
-  backdrop-filter:blur(30px) saturate(1.4);
-  -webkit-backdrop-filter:blur(30px) saturate(1.4);
-  border-bottom:1px solid var(--border);
-  z-index:20;flex-shrink:0;
+  background:rgba(10,10,15,.45);
+  backdrop-filter:blur(20px) saturate(1.4);
+  -webkit-backdrop-filter:blur(20px) saturate(1.4);
+  border-bottom:1px solid rgba(255,255,255,.04);
+  z-index:18;
+  transition:opacity .4s ease, transform .4s cubic-bezier(.23,1,.32,1);
+}
+#topbar.auto-hidden{
+  opacity:0;
+  transform:translateY(-100%);
+  pointer-events:none;
 }
 .topbar-left{display:flex;align-items:center;gap:.75rem}
 .topbar-logo{
@@ -528,15 +549,15 @@ video{width:100%;height:100%;object-fit:cover;display:block}
 
 /* ─── Notification toast ─────────────────────────────── */
 #toast{
-  position:fixed;bottom:6rem;left:50%;transform:translateX(-50%) translateY(14px);
-  background:var(--surface);
+  position:fixed;bottom:7rem;left:50%;transform:translateX(-50%) translateY(14px);
+  background:rgba(20,20,28,.7);
   backdrop-filter:blur(20px) saturate(1.4);
   -webkit-backdrop-filter:blur(20px) saturate(1.4);
   border:1px solid var(--border-hi);
   color:var(--text);padding:.6rem 1.4rem;border-radius:12px;
   font-size:.78rem;font-family:var(--mono);
   opacity:0;transition:opacity .3s,transform .3s cubic-bezier(.23,1,.32,1);
-  pointer-events:none;z-index:100;
+  pointer-events:none;z-index:200;
   box-shadow:0 8px 32px rgba(0,0,0,.4);
 }
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -550,37 +571,124 @@ video{width:100%;height:100%;object-fit:cover;display:block}
 
 @media(max-width:640px){
   #chat-panel{width:100%}
-  #video-area.has-peer #local-video-wrap{width:100px;height:134px;bottom:5.5rem;right:.75rem}
-
-  body.pip-over-chat #video-area.has-peer {
-    position:absolute;
-    width:100px;
-    height:134px;
-    bottom:5rem;
-    right:1rem;
-    z-index:40;
-    border-radius:12px;
-    overflow:hidden;
-  }
-  body.pip-over-chat #video-area.has-peer #remote-video {
-    border-radius: 12px;
-  }
-  body.pip-over-chat #video-area.has-peer #local-video-wrap {
-    width:40px !important;
-    height:54px !important;
-    bottom:.5rem !important;
-    right:.5rem !important;
-    left: auto !important;
-    top: auto !important;
-    transform: none !important;
-  }
-  body.pip-over-chat #video-area.has-peer #controls {
-    display:none;
-  }
+  #local-video-wrap{width:100px;height:134px;bottom:6rem;right:.75rem}
   .lobby-card{padding:2rem 1.5rem;border-radius:20px}
-  .ctrl-btn{width:46px;height:46px}
-  .ctrl-btn.end{width:52px;height:52px}
-  #controls{gap:.6rem}
+  .ctrl-btn{width:44px;height:44px}
+  .ctrl-btn.end{width:50px;height:50px}
+  .ctrl-btn svg{width:20px;height:20px}
+  #controls{gap:.65rem;padding:.65rem 1.25rem;bottom:18px}
+}
+
+/* Landscape adjustments */
+@media(max-height:500px) and (orientation:landscape){
+  #controls{bottom:12px;padding:.5rem 1.2rem;gap:.5rem}
+  .ctrl-btn{width:40px;height:40px}
+  .ctrl-btn.end{width:46px;height:46px}
+  #local-video-wrap{width:90px;height:120px;bottom:5rem}
+  #topbar{padding:.35rem 1rem}
+}
+
+/* ─── Stage 3: Swapped views ─────────────────────────── */
+#video-area.views-swapped #local-video-wrap{
+  position:absolute;inset:0;width:100%!important;height:100%!important;
+  border-radius:0;border:none;z-index:1;
+  box-shadow:none;cursor:default;
+}
+#video-area.views-swapped #remote-video-wrap{
+  position:absolute;width:120px;height:160px;
+  bottom:7rem;right:1rem;inset:auto;
+  border-radius:16px;overflow:hidden;
+  border:2px solid rgba(255,255,255,.18);
+  z-index:15;
+  box-shadow:0 4px 24px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.05),0 0 20px rgba(110,231,247,.12);
+  cursor:pointer;
+}
+#video-area.views-swapped .waiting-overlay{display:none!important}
+.swap-indicator{
+  position:absolute;top:8px;left:8px;z-index:20;
+  background:rgba(0,0,0,.55);color:#fff;font-size:.6rem;
+  padding:2px 8px;border-radius:6px;
+  font-family:var(--mono);pointer-events:none;
+  backdrop-filter:blur(8px);
+}
+@media(max-width:640px){
+  #video-area.views-swapped #remote-video-wrap{width:100px;height:134px;bottom:6rem;right:.75rem}
+}
+
+/* ─── Stage 4 & 5: PiP floating window ───────────────── */
+#pip-window{
+  display:none;position:fixed;
+  width:180px;height:240px;
+  border-radius:16px;overflow:hidden;
+  z-index:9999;
+  box-shadow:0 8px 40px rgba(0,0,0,.7),0 0 0 2px rgba(255,255,255,.1);
+  background:#0a0a0f;
+  cursor:grab;touch-action:none;user-select:none;
+  transition:border-color .25s;
+  border:2px solid rgba(255,255,255,.12);
+}
+#pip-window.active{display:block}
+#pip-window.dragging{cursor:grabbing;box-shadow:0 12px 48px rgba(0,0,0,.8),0 0 0 2px rgba(110,231,247,.4)}
+#pip-window video{width:100%;height:100%;object-fit:cover;display:block}
+#pip-window .pip-overlay{
+  position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(transparent,rgba(0,0,0,.7));
+  padding:8px 10px 6px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+#pip-window .pip-timer{
+  font-family:var(--mono);font-size:.65rem;color:#fff;
+  display:flex;align-items:center;gap:4px;
+}
+#pip-window .pip-timer::before{
+  content:'';width:6px;height:6px;border-radius:50%;
+  background:var(--success);box-shadow:0 0 6px var(--success);
+}
+#pip-window .pip-end-btn{
+  width:28px;height:28px;border-radius:50%;border:none;
+  background:var(--danger);color:#fff;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .15s;
+}
+#pip-window .pip-end-btn:hover{transform:scale(1.15)}
+#pip-window .pip-end-btn svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round}
+
+/* ─── Stage 5: PiP avatar fallback ───────────────────── */
+#pip-window .pip-avatar{
+  position:absolute;inset:0;
+  display:none;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#1f2c33,#0b141a);
+  font-size:3rem;color:rgba(255,255,255,.3);
+}
+#pip-window .pip-avatar.visible{display:flex}
+
+/* ─── Stage 6: Enhanced chat footer ──────────────────── */
+.chat-attach-bar{
+  display:flex;align-items:center;gap:2px;
+}
+.chat-attach-btn{
+  width:36px;height:36px;border-radius:50%;border:none;
+  background:none;color:#8696a0;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:color .15s,background .15s;
+  flex-shrink:0;
+}
+.chat-attach-btn:hover{color:#e9edef;background:rgba(255,255,255,.06)}
+.chat-attach-btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.chat-attach-btn.voice-blocked{opacity:.4;cursor:not-allowed}
+.voice-blocked-tooltip{
+  display:none;position:absolute;bottom:50px;left:50%;transform:translateX(-50%);
+  background:#1c2a31;color:#f87171;font-size:.68rem;
+  padding:6px 12px;border-radius:8px;white-space:nowrap;
+  box-shadow:0 4px 16px rgba(0,0,0,.4);
+  font-family:var(--sans);
+}
+.voice-blocked-tooltip.show{display:block}
+
+/* ─── Speaker active state ───────────────────────────── */
+.ctrl-btn.speaker-on{
+  background:rgba(52,211,153,.15);color:var(--success);
+  border:1px solid rgba(52,211,153,.3);
 }
 </style>
 </head>
@@ -624,7 +732,7 @@ video{width:100%;height:100%;object-fit:cover;display:block}
 
   <!-- ─── Call view ─────────────────────────────────── -->
   <div id="call-view">
-    <!-- Top bar -->
+    <!-- Top bar — floats over video -->
     <div id="topbar">
       <div class="topbar-left">
         <span class="topbar-logo">NexCall</span>
@@ -648,69 +756,103 @@ video{width:100%;height:100%;object-fit:cover;display:block}
             <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
             Copy link
           </button>
+          <button class="menu-item" id="pip-btn" onclick="enterPiPMode()">
+            <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><rect x="12" y="9" width="8" height="6" rx="1"/></svg>
+            Minimise call
+          </button>
         </div>
       </div>
     </div>
 
-    <!-- Main content: video + chat -->
-    <div style="flex:1;display:flex;overflow:hidden;position:relative">
-
-      <!-- Video area -->
-      <div id="video-area">
-        <div id="remote-video-wrap">
-          <video id="remote-video" autoplay playsinline></video>
-          <div class="waiting-overlay" id="waiting-overlay">
-            <div class="pulse-ring"></div>
-            <span>Waiting for peer…</span>
-          </div>
-        </div>
-        <div id="local-video-wrap">
-          <video id="local-video" autoplay playsinline muted></video>
-        </div>
-
-        <!-- Controls -->
-        <div id="controls">
-          <button class="ctrl-btn" id="screen-btn" onclick="toggleScreen()" title="Share screen">
-            <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          </button>
-          <button class="ctrl-btn" id="cam-btn" onclick="toggleCam()" title="Camera off">
-            <svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-          </button>
-          <button class="ctrl-btn" id="mic-btn" onclick="toggleMic()" title="Mute">
-            <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-          </button>
-          <button class="ctrl-btn end" id="end-btn" onclick="endCall()" title="End call">
-            <svg viewBox="0 0 24 24"><path d="M10.68 13.31a16 16 0 003.41 2.6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 004 .64 2 2 0 012 2v3.28a2 2 0 01-1.82 2A19.79 19.79 0 013.07 4.82 2 2 0 015.07 3h3.28a2 2 0 012 1.72 12.84 12.84 0 00.64 4 2 2 0 01-.45 2.11z"/></svg>
-          </button>
+    <!-- Video area — full screen background -->
+    <div id="video-area">
+      <div id="remote-video-wrap">
+        <video id="remote-video" autoplay playsinline></video>
+        <div class="waiting-overlay" id="waiting-overlay">
+          <div class="pulse-ring"></div>
+          <span>Waiting for peer…</span>
         </div>
       </div>
+      <div id="local-video-wrap">
+        <video id="local-video" autoplay playsinline muted></video>
+      </div>
 
-      <!-- Chat panel -->
-      <div id="chat-panel" class="hidden">
-        <div id="chat-header">
-          <div class="chat-header-left">
-            <button id="chat-close" onclick="toggleChat()" title="Back">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-            </button>
-            <div class="chat-avatar" id="chat-peer-avatar">P</div>
-            <div class="chat-header-info">
-              <span class="chat-header-name" id="chat-peer-name">Peer</span>
-              <span class="chat-header-status" id="chat-peer-status">in call</span>
-            </div>
+      <!-- Controls — floating pill -->
+      <div id="controls">
+        <button class="ctrl-btn" id="cam-btn" onclick="toggleCam()" title="Camera off">
+          <svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        </button>
+        <button class="ctrl-btn" id="mic-btn" onclick="toggleMic()" title="Mute">
+          <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        </button>
+        <button class="ctrl-btn end" id="end-btn" onclick="endCall()" title="End call">
+          <svg viewBox="0 0 24 24"><path d="M10.68 13.31a16 16 0 003.41 2.6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 004 .64 2 2 0 012 2v3.28a2 2 0 01-1.82 2A19.79 19.79 0 013.07 4.82 2 2 0 015.07 3h3.28a2 2 0 012 1.72 12.84 12.84 0 00.64 4 2 2 0 01-.45 2.11z"/></svg>
+        </button>
+        <button class="ctrl-btn" id="speaker-btn" onclick="toggleSpeaker()" title="Speaker">
+          <svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14"/><path d="M15.54 8.46a5 5 0 010 7.07"/></svg>
+        </button>
+        <button class="ctrl-btn" id="add-btn" onclick="addParticipant()" title="Add participant">
+          <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Chat panel — slides over -->
+    <div id="chat-panel" class="hidden">
+      <div id="chat-header">
+        <div class="chat-header-left">
+          <button id="chat-close" onclick="toggleChat()" title="Back">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div class="chat-avatar" id="chat-peer-avatar">P</div>
+          <div class="chat-header-info">
+            <span class="chat-header-name" id="chat-peer-name">Peer</span>
+            <span class="chat-header-status" id="chat-peer-status">in call</span>
           </div>
         </div>
-        <div id="messages"></div>
-        <div id="chat-footer">
-          <input id="chat-input" type="text" placeholder="Type a message" maxlength="500"
-                 onkeydown="if(event.key==='Enter'){event.preventDefault();sendChat()}"/>
-          <button id="chat-send" onclick="sendChat()" title="Send">
-            <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </div>
+      <div id="messages"></div>
+      <div id="chat-footer">
+        <div class="chat-attach-bar">
+          <button class="chat-attach-btn" id="emoji-btn" onclick="toast('Emoji picker coming soon')" title="Emoji">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+          </button>
+          <button class="chat-attach-btn" id="attach-btn" onclick="toast('Attachments coming soon')" title="Attach file">
+            <svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.49"/></svg>
           </button>
         </div>
+        <input id="chat-input" type="text" placeholder="Type a message" maxlength="500"
+               onkeydown="if(event.key==='Enter'){event.preventDefault();sendChat()}"/>
+        <div class="chat-attach-bar">
+          <button class="chat-attach-btn" id="sticker-btn" onclick="toast('Stickers coming soon')" title="Stickers">
+            <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1010 10A4 4 0 0112 2z"/><path d="M12 12a4 4 0 014 4 10 10 0 01-4-4z"/></svg>
+          </button>
+          <button class="chat-attach-btn voice-blocked" id="voice-msg-btn" onclick="showVoiceBlocked()" title="Voice message" style="position:relative">
+            <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            <div class="voice-blocked-tooltip" id="voice-blocked-tip">Mic in use by call</div>
+          </button>
+        </div>
+        <button id="chat-send" onclick="sendChat()" title="Send">
+          <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
       </div>
     </div>
   </div>
 
+</div>
+
+<!-- PiP floating window (Stage 4 & 5) -->
+<div id="pip-window">
+  <video id="pip-video" autoplay playsinline></video>
+  <div class="pip-avatar" id="pip-avatar">
+    <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+  </div>
+  <div class="pip-overlay">
+    <span class="pip-timer" id="pip-timer">00:00</span>
+    <button class="pip-end-btn" onclick="endCall()" title="End call">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
 </div>
 
 <!-- Toast -->
@@ -858,10 +1000,10 @@ async function startCall(rid){
   // Show call view
   document.getElementById('lobby').style.display='none';
   const cv = document.getElementById('call-view');
-  cv.style.display='flex';
-  cv.style.flexDirection='column';
+  cv.style.display='block';
   setRoomTag(roomId);
   startCallTimer();
+  initControlsAutoHide();
 
   // Connect socket — point to remote server if configured
   const base = apiBase();
@@ -911,7 +1053,6 @@ async function startCall(rid){
     peerId=null;
     document.getElementById('remote-video').srcObject=null;
     document.getElementById('waiting-overlay').style.display='flex';
-    document.getElementById('video-area').classList.remove('has-peer');
     
     // Reset PiP inline styles on disconnect
     const pip = document.getElementById('local-video-wrap');
@@ -946,7 +1087,6 @@ function initPC(){
   pc.ontrack = ({streams:[s]})=>{
     document.getElementById('remote-video').srcObject=s;
     document.getElementById('waiting-overlay').style.display='none';
-    document.getElementById('video-area').classList.add('has-peer');
   };
 
   pc.onicecandidate = ({candidate})=>{
@@ -1026,6 +1166,8 @@ function stopScreen(){
 }
 
 function endCall(){
+  if(pipModeActive) exitPiPMode();
+  if(viewsSwapped) swapViews();
   stopCallTimer();
   pc?.close(); pc=null;
   localStream?.getTracks().forEach(t=>t.stop());
@@ -1073,24 +1215,14 @@ function toggleChat(){
   
   if(chatOpen) {
     panel.classList.remove('hidden');
-    // Force reflow then add visible class for animation
     panel.offsetHeight;
     panel.classList.add('visible');
-    // Clear unread
     unreadCount = 0;
     updateUnreadBadge();
-    // Auto-focus input
     setTimeout(() => document.getElementById('chat-input').focus(), 350);
   } else {
     panel.classList.remove('visible');
     panel.classList.add('hidden');
-  }
-
-  // Toggle PiP over Chat
-  if(chatOpen && peerId){
-    document.body.classList.add('pip-over-chat');
-  }else{
-    document.body.classList.remove('pip-over-chat');
   }
 
   const menu = document.getElementById('menu-dropdown');
@@ -1152,7 +1284,52 @@ window.addEventListener('DOMContentLoaded',()=>{
   initPiPDrag();
 });
 
-// ─── PiP Drag & Snap Logic — WhatsApp-style ─────────────────────────
+// ─── Controls & Topbar Auto-Hide (3s inactivity) ─────────────────
+let autoHideTimer = null;
+
+function initControlsAutoHide() {
+  const controls = document.getElementById('controls');
+  const topbar = document.getElementById('topbar');
+  const callView = document.getElementById('call-view');
+  if (!callView) return;
+
+  function showUI() {
+    controls.classList.remove('auto-hidden');
+    topbar.classList.remove('auto-hidden');
+    clearTimeout(autoHideTimer);
+    autoHideTimer = setTimeout(hideUI, 3000);
+  }
+
+  function hideUI() {
+    if (chatOpen) return; // don't hide if chat is open
+    controls.classList.add('auto-hidden');
+    topbar.classList.add('auto-hidden');
+  }
+
+  // Show on any interaction
+  callView.addEventListener('mousemove', showUI);
+  callView.addEventListener('touchstart', showUI, {passive: true});
+  callView.addEventListener('click', showUI);
+
+  // Start the initial timer
+  autoHideTimer = setTimeout(hideUI, 3000);
+}
+
+// ─── Stage 3: View Swap State ─────────────────────────────────────
+let viewsSwapped = false;
+
+function swapViews() {
+  viewsSwapped = !viewsSwapped;
+  const area = document.getElementById('video-area');
+  area.classList.toggle('views-swapped', viewsSwapped);
+  // Reset any inline drag positions when swapping
+  const pip = document.getElementById('local-video-wrap');
+  const remote = document.getElementById('remote-video-wrap');
+  pip.style.left = ''; pip.style.top = ''; pip.style.right = ''; pip.style.bottom = '';
+  toast(viewsSwapped ? 'Showing your view' : 'Showing remote view');
+}
+
+// ─── PiP Drag & Snap Logic (with single-tap swap) ────────────────
 function initPiPDrag() {
   const pip = document.getElementById('local-video-wrap');
   const container = document.getElementById('video-area');
@@ -1160,7 +1337,6 @@ function initPiPDrag() {
   let isDragging = false;
   let hasMoved = false;
   let startX, startY, initialLeft, initialTop;
-  let lastTapTime = 0;
 
   const getXY = (e) => {
     if(e.touches && e.touches.length) return {x: e.touches[0].clientX, y: e.touches[0].clientY};
@@ -1168,17 +1344,14 @@ function initPiPDrag() {
   };
 
   const dragStart = (e) => {
-    if(!container.classList.contains('has-peer')) return;
-    if(document.body.classList.contains('pip-over-chat')) return;
-    
+    // Don't drag if views are swapped (local is fullscreen)
+    if(viewsSwapped) return;
     const {x, y} = getXY(e);
-    startX = x;
-    startY = y;
+    startX = x; startY = y;
     hasMoved = false;
     
     const rect = pip.getBoundingClientRect();
     const containerRect = container.getBoundingClientRect();
-    
     initialLeft = rect.left - containerRect.left;
     initialTop = rect.top - containerRect.top;
     
@@ -1194,80 +1367,198 @@ function initPiPDrag() {
   const dragMove = (e) => {
     if(!isDragging) return;
     e.preventDefault();
-    
     const {x, y} = getXY(e);
-    const dx = x - startX;
-    const dy = y - startY;
-    
-    // Consider it a real drag if moved more than 5px
+    const dx = x - startX, dy = y - startY;
     if(Math.abs(dx) > 5 || Math.abs(dy) > 5) hasMoved = true;
     
-    // Clamp to container bounds
     const contRect = container.getBoundingClientRect();
-    const pipW = pip.offsetWidth;
-    const pipH = pip.offsetHeight;
     const margin = 8;
-    
-    let newLeft = initialLeft + dx;
-    let newTop = initialTop + dy;
-    newLeft = Math.max(margin, Math.min(newLeft, contRect.width - pipW - margin));
-    newTop = Math.max(margin, Math.min(newTop, contRect.height - pipH - margin));
-    
+    let newLeft = Math.max(margin, Math.min(initialLeft + dx, contRect.width - pip.offsetWidth - margin));
+    let newTop = Math.max(margin, Math.min(initialTop + dy, contRect.height - pip.offsetHeight - margin));
     pip.style.left = newLeft + 'px';
     pip.style.top = newTop + 'px';
   };
 
-  const dragEnd = (e) => {
+  const dragEnd = () => {
     if(!isDragging) return;
     isDragging = false;
     pip.classList.remove('dragging');
     
-    // Double-tap to toggle size
+    // Stage 3: Single tap = swap views
     if(!hasMoved) {
-      const now = Date.now();
-      if(now - lastTapTime < 350) {
-        pip.classList.toggle('pip-large');
-        lastTapTime = 0;
-      } else {
-        lastTapTime = now;
-      }
+      swapViews();
+      return;
     }
     
-    // Snap to nearest edge (left or right) like WhatsApp
+    // Snap to nearest corner
     const rect = pip.getBoundingClientRect();
     const contRect = container.getBoundingClientRect();
-    
     const centerX = rect.left + rect.width / 2 - contRect.left;
     const currentTop = rect.top - contRect.top;
-    
     const padding = 12;
     const isLeft = centerX < contRect.width / 2;
-    const pipH = pip.offsetHeight;
     const controlsElem = document.getElementById('controls');
-    const controlsH = controlsElem ? controlsElem.offsetHeight : 80;
+    const controlsH = controlsElem ? controlsElem.offsetHeight + 40 : 100;
+    let clampedTop = Math.max(padding + 50, Math.min(currentTop, contRect.height - pip.offsetHeight - controlsH - padding));
     
-    // Clamp vertical position
-    let clampedTop = Math.max(padding, Math.min(currentTop, contRect.height - pipH - controlsH - padding));
-    
-    pip.style.left = 'auto';
-    pip.style.right = 'auto';
-    pip.style.top = clampedTop + 'px';
-    pip.style.bottom = 'auto';
-
-    if(isLeft) {
-      pip.style.left = padding + 'px';
-    } else {
-      pip.style.right = padding + 'px';
-    }
+    pip.style.left = 'auto'; pip.style.right = 'auto';
+    pip.style.top = clampedTop + 'px'; pip.style.bottom = 'auto';
+    if(isLeft) pip.style.left = padding + 'px';
+    else pip.style.right = padding + 'px';
   };
 
   pip.addEventListener('mousedown', dragStart);
   document.addEventListener('mousemove', dragMove, {passive: false});
   document.addEventListener('mouseup', dragEnd);
-  
   pip.addEventListener('touchstart', dragStart, {passive: false});
   document.addEventListener('touchmove', dragMove, {passive: false});
   document.addEventListener('touchend', dragEnd);
+
+  // Also allow tapping the shrunken remote wrap in swapped mode
+  document.getElementById('remote-video-wrap').addEventListener('click', (e) => {
+    if(viewsSwapped) { e.stopPropagation(); swapViews(); }
+  });
+}
+
+// ─── Stage 4 & 5: PiP Floating Window ────────────────────────────
+let pipModeActive = false;
+let pipTimerInterval = null;
+
+function enterPiPMode() {
+  if(pipModeActive || !socket) return;
+  pipModeActive = true;
+  
+  const pipWin = document.getElementById('pip-window');
+  const callView = document.getElementById('call-view');
+  const remoteVideo = document.getElementById('remote-video');
+  const pipVideo = document.getElementById('pip-video');
+  
+  // Clone remote stream into PiP video
+  if(remoteVideo.srcObject) {
+    pipVideo.srcObject = remoteVideo.srcObject;
+    document.getElementById('pip-avatar').classList.remove('visible');
+  } else {
+    pipVideo.srcObject = null;
+    document.getElementById('pip-avatar').classList.add('visible');
+  }
+  
+  // Position bottom-right
+  pipWin.style.right = '16px'; pipWin.style.bottom = '80px';
+  pipWin.style.left = 'auto'; pipWin.style.top = 'auto';
+  pipWin.classList.add('active');
+  callView.style.display = 'none';
+  
+  // Sync timer
+  pipTimerInterval = setInterval(() => {
+    if(!callStartTime) return;
+    const elapsed = Math.floor((Date.now()-callStartTime)/1000);
+    const m = String(Math.floor(elapsed/60)).padStart(2,'0');
+    const s = String(elapsed%60).padStart(2,'0');
+    document.getElementById('pip-timer').textContent = m+':'+s;
+  }, 1000);
+  
+  initPiPWindowDrag();
+  toast('Call floating — tap to return');
+}
+
+function exitPiPMode() {
+  if(!pipModeActive) return;
+  pipModeActive = false;
+  
+  const pipWin = document.getElementById('pip-window');
+  const callView = document.getElementById('call-view');
+  
+  pipWin.classList.remove('active');
+  callView.style.display = 'block';
+  clearInterval(pipTimerInterval);
+  document.getElementById('pip-video').srcObject = null;
+}
+
+function initPiPWindowDrag() {
+  const pipWin = document.getElementById('pip-window');
+  let isDrag = false, hasMov = false, sX, sY, iL, iT;
+  
+  const xy = (e) => e.touches?.length ? {x:e.touches[0].clientX, y:e.touches[0].clientY} : {x:e.clientX, y:e.clientY};
+  
+  const onDown = (e) => {
+    const {x,y} = xy(e);
+    sX = x; sY = y; hasMov = false;
+    const r = pipWin.getBoundingClientRect();
+    iL = r.left; iT = r.top;
+    pipWin.style.left = iL+'px'; pipWin.style.top = iT+'px';
+    pipWin.style.right = 'auto'; pipWin.style.bottom = 'auto';
+    isDrag = true;
+    pipWin.classList.add('dragging');
+  };
+  
+  const onMove = (e) => {
+    if(!isDrag) return; e.preventDefault();
+    const {x,y} = xy(e);
+    if(Math.abs(x-sX)>5||Math.abs(y-sY)>5) hasMov = true;
+    const nL = Math.max(0, Math.min(iL+(x-sX), window.innerWidth - pipWin.offsetWidth));
+    const nT = Math.max(0, Math.min(iT+(y-sY), window.innerHeight - pipWin.offsetHeight));
+    pipWin.style.left = nL+'px'; pipWin.style.top = nT+'px';
+  };
+  
+  const onUp = () => {
+    if(!isDrag) return; isDrag = false;
+    pipWin.classList.remove('dragging');
+    if(!hasMov) { exitPiPMode(); return; }
+    // Snap to nearest edge
+    const r = pipWin.getBoundingClientRect();
+    const isLeft = (r.left + r.width/2) < window.innerWidth/2;
+    pipWin.style.left = 'auto'; pipWin.style.right = 'auto';
+    pipWin.style.top = Math.max(16, Math.min(r.top, window.innerHeight - pipWin.offsetHeight - 16)) + 'px';
+    pipWin.style.bottom = 'auto';
+    if(isLeft) pipWin.style.left = '16px'; else pipWin.style.right = '16px';
+  };
+  
+  pipWin.addEventListener('mousedown', onDown);
+  document.addEventListener('mousemove', onMove, {passive:false});
+  document.addEventListener('mouseup', onUp);
+  pipWin.addEventListener('touchstart', onDown, {passive:false});
+  document.addEventListener('touchmove', onMove, {passive:false});
+  document.addEventListener('touchend', onUp);
+}
+
+// Stage 4: Keyboard shortcut — Escape triggers PiP
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape' && document.getElementById('call-view')?.style.display === 'block') {
+    if(pipModeActive) exitPiPMode();
+    else enterPiPMode();
+  }
+});
+
+// Stage 4: Back button / visibility change triggers PiP
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden && socket && !pipModeActive) {
+    enterPiPMode();
+  }
+});
+
+// ─── Speaker & Add Participant ───────────────────────────────────
+let speakerOn = true;
+
+function toggleSpeaker() {
+  speakerOn = !speakerOn;
+  const rv = document.getElementById('remote-video');
+  if(rv) rv.muted = !speakerOn;
+  const btn = document.getElementById('speaker-btn');
+  btn.classList.toggle('speaker-on', speakerOn);
+  btn.classList.toggle('off', !speakerOn);
+  toast(speakerOn ? 'Speaker on' : 'Speaker off');
+}
+
+function addParticipant() {
+  copyRoomLink();
+  toast('Room link copied — share it to invite');
+}
+
+// ─── Stage 6: Voice message blocked ──────────────────────────────
+function showVoiceBlocked() {
+  const tip = document.getElementById('voice-blocked-tip');
+  tip.classList.add('show');
+  setTimeout(() => tip.classList.remove('show'), 2000);
 }
 </script>
 </body>
