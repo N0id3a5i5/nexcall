@@ -167,6 +167,37 @@ input[type=text]::placeholder{color:var(--muted);opacity:.6}
 .server-config summary::before{content:'⚙';font-size:.8rem}
 .server-config .field-group{margin-top:.75rem;margin-bottom:0}
 
+/* ─── Network Toggle ────────────────────────────────── */
+.network-toggle{
+  display:flex;background:rgba(255,255,255,.04);border-radius:12px;
+  padding:4px;margin-bottom:1.5rem;border:1px solid var(--border);
+}
+.net-btn{
+  flex:1;padding:.6rem;border-radius:10px;border:none;cursor:pointer;
+  background:transparent;color:var(--muted);font-family:var(--sans);
+  font-size:.75rem;font-weight:600;transition:all .25s;
+}
+.net-btn.active{
+  background:var(--surface);color:var(--accent);
+  box-shadow:0 4px 12px rgba(0,0,0,.3);border:1px solid var(--border-hi);
+}
+.session-info{
+  background:rgba(110,231,247,.05);border:1px dashed var(--accent-dim);
+  border-radius:12px;padding:1rem;margin-bottom:1rem;
+  display:none; /* hidden by default */
+}
+.session-info.show{display:block}
+.session-info label{color:var(--accent);display:flex;justify-content:space-between}
+.session-info .copy-btn{
+  background:none;border:none;color:var(--accent);cursor:pointer;
+  font-size:.7rem;text-transform:uppercase;font-weight:700;
+}
+.session-id-display{
+  font-family:var(--mono);font-size:.75rem;color:#eaeaef;
+  word-break:break-all;margin-top:.4rem;line-height:1.4;
+  user-select:all;
+}
+
 /* ─── Call layout ────────────────────────────────────── */
 #call-view{
   flex:1;display:none;position:relative;overflow:hidden;
@@ -705,22 +736,35 @@ video{width:100%;height:100%;object-fit:cover;display:block}
     <div class="lobby-card">
       <div class="logo">NexCall</div>
       <div class="tagline">end-to-end encrypted · WebRTC</div>
+
+      <!-- Network Toggle -->
+      <div class="network-toggle">
+        <button class="net-btn active" id="net-render" onclick="setNetwork('render')">Render Server</button>
+        <button class="net-btn" id="net-session" onclick="setNetwork('session')">Session Network</button>
+      </div>
+
+      <!-- Session Info (Hidden on Render) -->
+      <div class="session-info" id="session-info-box">
+        <label>Your Session ID <button class="copy-btn" onclick="copySessionId()">Copy</button></label>
+        <div class="session-id-display" id="my-session-id">Generating temporary ID...</div>
+      </div>
+
       <div class="field-group">
         <label>Display name</label>
         <input id="name-input" type="text" placeholder="Anonymous" maxlength="32"/>
       </div>
       <div class="field-group">
-        <label>Room ID <span style="color:var(--muted);font-size:.65rem;letter-spacing:.02em">(leave blank to create)</span></label>
-        <input id="room-input" type="text" placeholder="Paste room ID…" maxlength="64"/>
+        <label id="room-label">Room ID <span style="color:var(--muted);font-size:.65rem;letter-spacing:.02em">(leave blank to create)</span></label>
+        <input id="room-input" type="text" placeholder="Paste room ID…" maxlength="128"/>
       </div>
-      <div class="btn-row">
+      <div class="btn-row" id="lobby-btn-row">
         <button class="btn btn-primary" id="btn-create" onclick="createRoom()">New room</button>
         <button class="btn btn-ghost"   id="btn-join" onclick="joinRoom()">Join</button>
       </div>
       <div class="status-msg" id="lobby-status"></div>
 
-      <!-- Server URL config (for Capacitor / standalone use) -->
-      <details class="server-config">
+      <!-- Server URL config (Hidden on Session Network) -->
+      <details class="server-config" id="server-config-details">
         <summary>Server settings</summary>
         <div class="field-group">
           <label>Signaling Server URL</label>
@@ -903,9 +947,15 @@ const ICONS = {
 };
 
 // ─── State ───────────────────────────────────────────────────────
-let socket, pc, localStream, screenStream;
+let activeNetwork = 'render'; // 'render' or 'session'
+let mySessionId = '';
+let peerSessionId = '';
+// Fake session client for architecture demonstration
+let sessionClient = null;
+
+let socket, pc, localStream;
 let myId, peerId, roomId;
-let micOn = true, camOn = true, screenSharing = false;
+let micOn = true, camOn = true;
 let chatOpen = false;
 let token = null;
 let callTimerInterval = null, callStartTime = null;
@@ -926,10 +976,56 @@ function toast(msg, dur=2500){
   setTimeout(()=>el.classList.remove('show'),dur);
 }
 function lobbyStatus(msg){document.getElementById('lobby-status').textContent=msg}
-function setRoomTag(id){document.getElementById('room-tag').textContent='Room: '+id.slice(0,13)+'…'}
+function setRoomTag(id){
+  const tag = activeNetwork === 'session' ? 'Session: ' : 'Room: ';
+  document.getElementById('room-tag').textContent=tag+id.slice(0,13)+'…';
+}
 
 function apiBase() {
   return getServerURL();
+}
+
+// ─── Network Switching ───────────────────────────────────────────
+function setNetwork(type) {
+  activeNetwork = type;
+  document.getElementById('net-render').classList.toggle('active', type === 'render');
+  document.getElementById('net-session').classList.toggle('active', type === 'session');
+  
+  const serverBox = document.getElementById('server-config-details');
+  const sessionBox = document.getElementById('session-info-box');
+  const roomLabel = document.getElementById('room-label');
+  const roomInput = document.getElementById('room-input');
+  const btnRow = document.getElementById('lobby-btn-row');
+  const btnCreate = document.getElementById('btn-create');
+  
+  if (type === 'session') {
+    serverBox.style.display = 'none';
+    sessionBox.classList.add('show');
+    roomLabel.innerHTML = 'Peer Session ID <span style="color:var(--muted);font-size:.65rem;letter-spacing:.02em">(required to call)</span>';
+    roomInput.placeholder = 'Paste friend\'s Session ID…';
+    btnCreate.style.display = 'none'; // Sessions are direct, no "rooms" to create
+    
+    // Generate temporary ID if we haven't already
+    if (!mySessionId) {
+      // In a real Session SDK implementation:
+      // const keypair = await Session.generateKeypair();
+      // mySessionId = keypair.publicKey;
+      mySessionId = '05' + Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join('');
+      document.getElementById('my-session-id').textContent = mySessionId;
+    }
+  } else {
+    serverBox.style.display = '';
+    sessionBox.classList.remove('show');
+    roomLabel.innerHTML = 'Room ID <span style="color:var(--muted);font-size:.65rem;letter-spacing:.02em">(leave blank to create)</span>';
+    roomInput.placeholder = 'Paste room ID…';
+    btnCreate.style.display = '';
+  }
+}
+
+function copySessionId() {
+  if (!mySessionId) return;
+  navigator.clipboard.writeText(mySessionId);
+  toast('Session ID copied! Send this to your friend.');
 }
 
 // ─── Call timer ───────────────────────────────────────────────────
@@ -960,6 +1056,7 @@ async function getToken(){
 
 // ─── Lobby actions ────────────────────────────────────────────────
 async function createRoom(){
+  if (activeNetwork === 'session') return; // Not used in Session mode
   lobbyStatus('Connecting to server…');
   try{
     const base = apiBase();
@@ -975,18 +1072,33 @@ async function createRoom(){
 
 async function joinRoom(){
   const rid = document.getElementById('room-input').value.trim();
-  if(!rid){lobbyStatus('Paste a room ID first');return}
-  lobbyStatus('Connecting to server…');
-  try{
-    const base = apiBase();
-    await loadSocketIO(base);
-    token = await getToken();
-    await startCall(rid);
-  }catch(e){lobbyStatus('Error: '+e.message)}
+  if(!rid) {
+    lobbyStatus(activeNetwork === 'session' ? 'Paste a Peer Session ID first' : 'Paste a room ID first');
+    return;
+  }
+  
+  if (activeNetwork === 'session') {
+    if (rid.length !== 66 || !rid.startsWith('05')) {
+      lobbyStatus('Invalid Session ID. Must be 66 chars starting with 05.');
+      return;
+    }
+    peerSessionId = rid;
+    roomId = peerSessionId; // Use peer ID as the room label
+    lobbyStatus('Connecting to Session network…');
+    await startCall(roomId, true); // true = we are initiating the call
+  } else {
+    lobbyStatus('Connecting to server…');
+    try{
+      const base = apiBase();
+      await loadSocketIO(base);
+      token = await getToken();
+      await startCall(rid, false);
+    }catch(e){lobbyStatus('Error: '+e.message)}
+  }
 }
 
 // ─── Start call flow ──────────────────────────────────────────────
-async function startCall(rid){
+async function startCall(rid, isSessionInitiator){
   roomId = rid;
 
   // Get media
@@ -1005,77 +1117,129 @@ async function startCall(rid){
   startCallTimer();
   initControlsAutoHide();
 
-  // Connect socket — point to remote server if configured
-  const base = apiBase();
-  const socketOpts = {transports:['websocket'],auth:{token}};
-  socket = base ? io(base, socketOpts) : io(socketOpts);
-
-  socket.on('connect', ()=>{
-    myId = socket.id;
-    socket.emit('join',{roomId});
-    lobbyStatus('');
-  });
-
-  socket.on('connect_error', e=>{ toast('Connection error: '+e.message); });
-  socket.on('error', e=>{ toast('Error: ' + (e.message || e)); });
-
-  socket.on('room-joined',({peers})=>{
-    if(peers.length>0){
-      peerId = peers[0];
+  if (activeNetwork === 'session') {
+    // ─── SESSION NETWORK PATH ───
+    initSessionClient();
+    
+    // If we clicked "Join" specifically, we initiate the WebRTC offer
+    if (isSessionInitiator && peerSessionId) {
       initPC();
       createOffer();
+    } else {
+      // We are waiting for an incoming call/offer via Session
+      document.getElementById('waiting-overlay').style.display='flex';
+      toast('Polling Session network for incoming calls...');
     }
-  });
+  } else {
+    // ─── RENDER SOCKET SERVER PATH ───
+    const base = apiBase();
+    const socketOpts = {transports:['websocket'],auth:{token}};
+    socket = base ? io(base, socketOpts) : io(socketOpts);
 
-  socket.on('peer-joined',({peerId:pid})=>{
-    peerId=pid;
-    initPC();
-  });
+    socket.on('connect', ()=>{
+      myId = socket.id;
+      socket.emit('join',{roomId});
+      lobbyStatus('');
+    });
 
-  socket.on('offer',async({from,offer})=>{
+    socket.on('connect_error', e=>{ toast('Connection error: '+e.message); });
+    socket.on('error', e=>{ toast('Error: ' + (e.message || e)); });
+
+    socket.on('room-joined',({peers})=>{
+      if(peers.length>0){
+        peerId = peers[0];
+        initPC();
+        createOffer();
+      }
+    });
+
+    socket.on('peer-joined',({peerId:pid})=>{
+      peerId=pid;
+      initPC();
+    });
+
+    socket.on('offer',async({from,offer})=>{
+      if(!pc) initPC();
+      peerId=from;
+      await pc.setRemoteDescription(new RTCSessionDescription(offer));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      socket.emit('answer',{to:peerId,answer});
+    });
+
+    socket.on('answer',async({answer})=>{
+      await pc.setRemoteDescription(new RTCSessionDescription(answer));
+    });
+
+    socket.on('ice-candidate',async({candidate})=>{
+      try{ await pc.addIceCandidate(new RTCIceCandidate(candidate)); }catch(_){}
+    });
+
+    socket.on('peer-left',()=>{
+      peerId=null;
+      document.getElementById('remote-video').srcObject=null;
+      document.getElementById('waiting-overlay').style.display='flex';
+      const pip = document.getElementById('local-video-wrap');
+      if (pip) { pip.style.left = ''; pip.style.top = ''; pip.style.right = ''; pip.style.bottom = ''; }
+      pc?.close(); pc=null;
+      toast('Peer disconnected');
+    });
+
+    socket.on('room-full',()=>{ toast('Room is full (max 2 peers)'); endCall(); });
+
+    socket.on('chat',({from,text,ts})=>{
+      appendChat(from===myId?'self':'other', text, new Date(ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}));
+      if(!chatOpen && from!==myId) {
+        unreadCount++;
+        updateUnreadBadge();
+      }
+    });
+  }
+}
+
+// ─── Session Network Core Routing Stub ────────────────────────────
+// In a proper bundled setup, this interacts with Oxen Service Nodes.
+function initSessionClient() {
+  toast('Connected to Session Network (Stub)');
+  
+  // This simulates the Session.js polling wrapper
+  sessionClient = {
+    send: (targetSessionId, payload) => {
+      // TODO: Encrypt JSON payload and send to targetSessionId via Oxen RPC
+      console.log(`[Session Net] Sending to ${targetSessionId}:`, payload);
+      // For demo purposes (mocking routing if testing locally across instances is impossible without a backend gateway)
+      // In reality, this waits seconds for Swarm routing.
+    },
+    onMessage: (senderSessionId, payload) => {
+      // TODO: Decrypt incoming messages from the poll loop
+      console.log(`[Session Net] Received from ${senderSessionId}:`, payload);
+      handleSessionSignaling(senderSessionId, payload);
+    }
+  };
+  
+  // Fake an incoming call for demonstration if we have no peer yet
+  if (!peerSessionId) {
+    setTimeout(() => toast('Waiting on Session network...'), 3000);
+  }
+}
+
+async function handleSessionSignaling(senderId, data) {
+  peerSessionId = senderId;
+  
+  if (data.type === 'offer') {
     if(!pc) initPC();
-    peerId=from;
-    await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
-    socket.emit('answer',{to:peerId,answer});
-  });
-
-  socket.on('answer',async({answer})=>{
-    await pc.setRemoteDescription(new RTCSessionDescription(answer));
-  });
-
-  socket.on('ice-candidate',async({candidate})=>{
-    try{ await pc.addIceCandidate(new RTCIceCandidate(candidate)); }catch(_){}
-  });
-
-  socket.on('peer-left',()=>{
-    peerId=null;
-    document.getElementById('remote-video').srcObject=null;
-    document.getElementById('waiting-overlay').style.display='flex';
-    
-    // Reset PiP inline styles on disconnect
-    const pip = document.getElementById('local-video-wrap');
-    if (pip) {
-      pip.style.left = '';
-      pip.style.top = '';
-      pip.style.right = '';
-      pip.style.bottom = '';
-    }
-
-    pc?.close(); pc=null;
-    toast('Peer disconnected');
-  });
-
-  socket.on('room-full',()=>{ toast('Room is full (max 2 peers)'); endCall(); });
-
-  socket.on('chat',({from,text,ts})=>{
-    appendChat(from===myId?'self':'other', text, new Date(ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}));
-    if(!chatOpen && from!==myId) {
-      unreadCount++;
-      updateUnreadBadge();
-    }
-  });
+    sessionClient.send(peerSessionId, { type: 'answer', answer });
+  } else if (data.type === 'answer') {
+    await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+  } else if (data.type === 'ice-candidate') {
+    try{ await pc.addIceCandidate(new RTCIceCandidate(data.candidate)); }catch(_){}
+  } else if (data.type === 'chat') {
+    appendChat('other', data.text, new Date(data.ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}));
+    if(!chatOpen) { unreadCount++; updateUnreadBadge(); }
+  }
 }
 
 // ─── PeerConnection ───────────────────────────────────────────────
@@ -1090,8 +1254,13 @@ function initPC(){
   };
 
   pc.onicecandidate = ({candidate})=>{
-    if(candidate && peerId)
-      socket.emit('ice-candidate',{to:peerId,candidate});
+    if(candidate) {
+      if (activeNetwork === 'session' && peerSessionId) {
+        sessionClient.send(peerSessionId, { type: 'ice-candidate', candidate });
+      } else if (activeNetwork === 'render' && peerId) {
+        socket.emit('ice-candidate',{to:peerId,candidate});
+      }
+    }
   };
 
   pc.onconnectionstatechange = ()=>{
@@ -1111,7 +1280,12 @@ function initPC(){
 async function createOffer(){
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
-  socket.emit('offer',{to:peerId,offer});
+  
+  if (activeNetwork === 'session' && peerSessionId) {
+    sessionClient.send(peerSessionId, { type: 'offer', offer });
+  } else if (activeNetwork === 'render') {
+    socket.emit('offer',{to:peerId,offer});
+  }
 }
 
 // ─── Controls ─────────────────────────────────────────────────────
@@ -1133,37 +1307,7 @@ function toggleCam(){
   toast(camOn ? 'Camera on' : 'Camera off');
 }
 
-async function toggleScreen(){
-  if(!screenSharing){
-    try{
-      screenStream = await navigator.mediaDevices.getDisplayMedia({video:true});
-      const screenTrack = screenStream.getVideoTracks()[0];
-      const sender = pc?.getSenders().find(s=>s.track?.kind==='video');
-      if(sender) sender.replaceTrack(screenTrack);
-      document.getElementById('local-video').srcObject = screenStream;
-      document.getElementById('screen-btn').classList.add('screen-on');
-      document.getElementById('screen-btn').title = 'Stop sharing';
-      screenSharing = true;
-      screenTrack.onended = stopScreen;
-      toast('Screen sharing started');
-    }catch(e){ if(e.name!=='NotAllowedError') toast('Screen share error: '+e.message); }
-  } else {
-    stopScreen();
-  }
-}
-
-function stopScreen(){
-  screenSharing = false;
-  document.getElementById('screen-btn').classList.remove('screen-on');
-  document.getElementById('screen-btn').title = 'Share screen';
-  const camTrack = localStream.getVideoTracks()[0];
-  const sender = pc?.getSenders().find(s=>s.track?.kind==='video');
-  if(sender && camTrack) sender.replaceTrack(camTrack);
-  document.getElementById('local-video').srcObject = localStream;
-  screenStream?.getTracks().forEach(t=>t.stop());
-  screenStream = null;
-  toast('Screen sharing stopped');
-}
+// Screen sharing removed from 1-on-1 WhatsApp-style UI (no screen-btn in DOM)
 
 function endCall(){
   if(pipModeActive) exitPiPMode();
@@ -1171,8 +1315,8 @@ function endCall(){
   stopCallTimer();
   pc?.close(); pc=null;
   localStream?.getTracks().forEach(t=>t.stop());
-  screenStream?.getTracks().forEach(t=>t.stop());
   socket?.disconnect();
+  sessionClient = null;
   location.reload();
 }
 
@@ -1249,8 +1393,17 @@ function appendChat(type, text, time){
 function sendChat(){
   const inp = document.getElementById('chat-input');
   const text = inp.value.trim();
-  if(!text || !socket || !roomId) return;
-  socket.emit('chat', {roomId, text});
+  if(!text) return;
+  
+  if (activeNetwork === 'session' && peerSessionId) {
+    // Session mode: show locally + send over Session network
+    appendChat('self', text, new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}));
+    sessionClient.send(peerSessionId, { type: 'chat', text, ts: Date.now() });
+  } else if (activeNetwork === 'render' && socket && roomId) {
+    // Render mode: server echoes back, so appendChat is handled in socket.on('chat')
+    socket.emit('chat', {roomId, text});
+  }
+  
   inp.value = '';
   inp.focus();
 }
@@ -1425,7 +1578,7 @@ let pipModeActive = false;
 let pipTimerInterval = null;
 
 function enterPiPMode() {
-  if(pipModeActive || !socket) return;
+  if(pipModeActive || (!socket && !sessionClient)) return;
   pipModeActive = true;
   
   const pipWin = document.getElementById('pip-window');
@@ -1531,7 +1684,7 @@ document.addEventListener('keydown', (e) => {
 
 // Stage 4: Back button / visibility change triggers PiP
 document.addEventListener('visibilitychange', () => {
-  if(document.hidden && socket && !pipModeActive) {
+  if(document.hidden && (socket || sessionClient) && !pipModeActive) {
     enterPiPMode();
   }
 });
